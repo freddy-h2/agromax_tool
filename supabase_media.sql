@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS media (
     -- token_id and secret_key removed in favor of server-side env vars
     mux_asset_id TEXT,
     
+    -- AI Content
+    transcription TEXT,
+    
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

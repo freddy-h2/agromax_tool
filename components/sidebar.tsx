@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { Home, Download, Upload, LogOut, Settings } from "lucide-react";
+import { Home, Download, Upload, LogOut, Settings, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -14,6 +14,11 @@ const menuItems = [
         name: "Inicio",
         href: "/dashboard",
         icon: Home,
+    },
+    {
+        name: "Contenido",
+        href: "/content",
+        icon: FileText,
     },
     {
         name: "Administrar",
