@@ -66,10 +66,10 @@ export function AdminClient({ videos }: AdminClientProps) {
         try {
             const { error } = await supabase.from("media").insert([
                 {
-                    title: data.title,
+                    title: data.title.trim(),
                     description: data.description,
-                    mux_playback_id: data.mux_playback_id,
-                    mux_asset_id: data.mux_asset_id,
+                    mux_playback_id: data.mux_playback_id?.trim(),
+                    mux_asset_id: data.mux_asset_id?.trim(),
                 },
             ]);
 

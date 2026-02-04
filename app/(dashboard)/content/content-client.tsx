@@ -138,9 +138,9 @@ export function ContentClient({ videos }: ContentClientProps) {
             router.refresh();
 
             setTimeout(() => setSuccess(false), 3000);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error updating video content:", error);
-            alert("Error al guardar el contenido.");
+            alert(`Error al guardar: ${error.message || "Error desconocido"}`);
         } finally {
             setLoading(false);
         }
@@ -194,8 +194,8 @@ export function ContentClient({ videos }: ContentClientProps) {
                                 layoutId={video.id}
                                 onClick={() => handleSelectVideo(video)}
                                 className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedVideo?.id === video.id
-                                        ? "bg-neon-blue/10 border-neon-blue/50 ring-1 ring-neon-blue/20"
-                                        : "glass border-white/5 hover:bg-white/5"
+                                    ? "bg-neon-blue/10 border-neon-blue/50 ring-1 ring-neon-blue/20"
+                                    : "glass border-white/5 hover:bg-white/5"
                                     }`}
                             >
                                 <h3 className={`font-medium text-sm line-clamp-1 ${selectedVideo?.id === video.id ? "text-neon-blue" : "text-foreground"
@@ -277,7 +277,7 @@ export function ContentClient({ videos }: ContentClientProps) {
                                         {/* TITLE */}
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-between">
-                                                <Label>Título Optimizado</Label>
+                                                <Label>Título</Label>
                                                 {hasTranscription && (
                                                     <button
                                                         type="button"
