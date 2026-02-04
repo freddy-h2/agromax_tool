@@ -20,6 +20,49 @@ interface GalleryData {
     totalSize: string;
 }
 
+// Component for thumbnail with fallback
+function VideoThumbnail({ fileName, assetId }: { fileName: string; assetId: string }) {
+    const [hasError, setHasError] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    if (hasError) {
+        return (
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a]">
+                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
+                    <Play className="h-8 w-8 text-white ml-1" />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a]">
+                    <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                </div>
+            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src={`/api/thumbnail?file=${encodeURIComponent(fileName)}`}
+                alt={`Thumbnail for ${assetId}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+                onLoad={() => setIsLoading(false)}
+                onError={() => {
+                    setIsLoading(false);
+                    setHasError(true);
+                }}
+            />
+            {/* Play button overlay */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/30">
+                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                    <Play className="h-6 w-6 text-white ml-0.5" />
+                </div>
+            </div>
+        </>
+    );
+}
+
 export default function GalleryPage() {
     const [data, setData] = useState<GalleryData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -130,19 +173,15 @@ export default function GalleryPage() {
                             className="rounded-xl border border-[#333] bg-[#0a0a0a] overflow-hidden hover:border-[#555] transition-colors cursor-pointer"
                             onClick={() => setSelectedVideo(selectedVideo?.id === video.id ? null : video)}
                         >
-                            {/* Thumbnail placeholder */}
-                            <div className="aspect-video bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] flex items-center justify-center relative">
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
-                                        <Play className="h-8 w-8 text-white ml-1" />
-                                    </div>
-                                </div>
+                            {/* Thumbnail */}
+                            <div className="aspect-video relative">
+                                <VideoThumbnail fileName={video.fileName} assetId={video.assetId} />
                                 {/* Asset ID Badge */}
-                                <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/70 text-xs text-[#888] font-mono">
+                                <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/70 text-xs text-[#888] font-mono z-10">
                                     {video.assetId.slice(0, 12)}...
                                 </div>
                                 {/* Size Badge */}
-                                <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/70 text-xs text-white">
+                                <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/70 text-xs text-white z-10">
                                     {video.sizeFormatted}
                                 </div>
                             </div>
