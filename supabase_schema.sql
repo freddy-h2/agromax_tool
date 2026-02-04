@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS published_videos (
     title TEXT NOT NULL,
     description TEXT,
     resumen TEXT,
+    descripcion TEXT,
     
     -- Scheduling
     live_date TIMESTAMP WITH TIME ZONE,

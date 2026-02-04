@@ -7,33 +7,69 @@ import { spawn } from "child_process";
 const DOWNLOADS_DIR = path.join(process.cwd(), "downloads");
 const THUMBNAILS_DIR = path.join(process.cwd(), "public", "thumbnails");
 
-// Generate thumbnail using ffmpeg CLI (more reliable than fluent-ffmpeg)
+// Common ffmpeg locations on Windows
+const FFMPEG_PATHS = [
+    "ffmpeg", // PATH
+    "C:\\Users\\Usuario\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-7.1.1-full_build\\bin\\ffmpeg.exe",
+    "C:\\ffmpeg\\bin\\ffmpeg.exe",
+    "C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe",
+];
+
+// Find ffmpeg executable
+async function findFfmpeg(): Promise<string | null> {
+    for (const ffmpegPath of FFMPEG_PATHS) {
+        if (ffmpegPath === "ffmpeg") {
+            // Check if ffmpeg is in PATH
+            return new Promise((resolve) => {
+                const proc = spawn("ffmpeg", ["-version"], { shell: true });
+                proc.on("close", (code) => resolve(code === 0 ? "ffmpeg" : null));
+                proc.on("error", () => resolve(null));
+                setTimeout(() => {
+                    proc.kill();
+                    resolve(null);
+                }, 2000);
+            });
+        } else if (existsSync(ffmpegPath)) {
+            return ffmpegPath;
+        }
+    }
+    return null;
+}
+
+// Generate thumbnail using ffmpeg
 async function generateThumbnail(videoPath: string, thumbnailPath: string): Promise<boolean> {
+    const ffmpegPath = await findFfmpeg();
+
+    if (!ffmpegPath) {
+        console.log("[Thumbnail] ffmpeg not found");
+        return false;
+    }
+
     return new Promise((resolve) => {
-        // Use ffmpeg to extract a frame at 1 second
-        const ffmpeg = spawn("ffmpeg", [
+        const ffmpeg = spawn(ffmpegPath, [
             "-y",
-            "-i", videoPath,
+            "-i", `"${videoPath}"`,
             "-ss", "00:00:01",
             "-vframes", "1",
             "-vf", "scale=320:-1",
             "-q:v", "2",
-            thumbnailPath
-        ]);
+            `"${thumbnailPath}"`
+        ], { shell: true });
 
         ffmpeg.on("close", (code) => {
             resolve(code === 0);
         });
 
-        ffmpeg.on("error", () => {
+        ffmpeg.on("error", (err) => {
+            console.log("[Thumbnail] ffmpeg error:", err);
             resolve(false);
         });
 
-        // Timeout after 10 seconds
+        // Timeout after 15 seconds
         setTimeout(() => {
             ffmpeg.kill();
             resolve(false);
-        }, 10000);
+        }, 15000);
     });
 }
 
@@ -83,9 +119,9 @@ export async function GET(request: NextRequest) {
         });
     }
 
-    // If ffmpeg fails, return a placeholder response
+    // If ffmpeg fails, return error
     return NextResponse.json({
         error: "Could not generate thumbnail",
-        hint: "Make sure ffmpeg is installed on your system"
+        hint: "ffmpeg not found or failed. Restart VS Code to update PATH."
     }, { status: 500 });
 }
