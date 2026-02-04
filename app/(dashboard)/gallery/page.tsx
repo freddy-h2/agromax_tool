@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Images, Film, HardDrive, Calendar, RefreshCw, Play, Download } from "lucide-react";
+import { Images, Film, HardDrive, Calendar, RefreshCw, Play, Download, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 
@@ -26,6 +26,7 @@ export default function GalleryPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedVideo, setSelectedVideo] = useState<VideoFile | null>(null);
     const [playingVideo, setPlayingVideo] = useState<VideoFile | null>(null);
+    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
     const fetchVideos = async () => {
         setIsLoading(true);
@@ -57,14 +58,34 @@ export default function GalleryPage() {
                         Videos descargados de MUX almacenados localmente
                     </p>
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={fetchVideos}
-                    disabled={isLoading}
-                >
-                    <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-                    Actualizar
-                </Button>
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg p-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 rounded-md ${viewMode === "grid" ? "bg-[#333] text-white" : "text-[#888] hover:text-white"}`}
+                            onClick={() => setViewMode("grid")}
+                        >
+                            <LayoutGrid className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 rounded-md ${viewMode === "list" ? "bg-[#333] text-white" : "text-[#888] hover:text-white"}`}
+                            onClick={() => setViewMode("list")}
+                        >
+                            <List className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <Button
+                        variant="outline"
+                        onClick={fetchVideos}
+                        disabled={isLoading}
+                    >
+                        <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                        Actualizar
+                    </Button>
+                </div>
             </div>
 
             {/* Stats Cards */}
@@ -125,71 +146,127 @@ export default function GalleryPage() {
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {data?.files.map((video) => (
-                        <div
-                            key={video.id}
-                            className="rounded-xl border border-[#333] bg-[#0a0a0a] overflow-hidden hover:border-[#555] transition-colors cursor-pointer"
-                            onClick={() => setSelectedVideo(selectedVideo?.id === video.id ? null : video)}
-                        >
-                            {/* Thumbnail placeholder */}
+                viewMode === "grid" ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {data?.files.map((video) => (
                             <div
-                                className="aspect-video bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] flex items-center justify-center relative hover:opacity-90 transition-opacity"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setPlayingVideo(video);
-                                }}
+                                key={video.id}
+                                className="rounded-xl border border-[#333] bg-[#0a0a0a] overflow-hidden hover:border-[#555] transition-colors cursor-pointer"
+                                onClick={() => setSelectedVideo(selectedVideo?.id === video.id ? null : video)}
                             >
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
-                                        <Play className="h-8 w-8 text-white ml-1" />
-                                    </div>
-                                </div>
-                                {/* Asset ID Badge */}
-                                <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/70 text-xs text-[#888] font-mono">
-                                    {video.assetId.slice(0, 12)}...
-                                </div>
-                                {/* Size Badge */}
-                                <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/70 text-xs text-white">
-                                    {video.sizeFormatted}
-                                </div>
-                            </div>
-
-                            {/* Video Info */}
-                            <div className="p-4">
-                                <p className="text-sm font-medium text-white truncate mb-2" title={video.fileName}>
-                                    {video.fileName}
-                                </p>
-                                <div className="flex items-center gap-1 text-xs text-[#888]">
-                                    <Calendar className="h-3 w-3" />
-                                    <span>{video.downloadedAtFormatted}</span>
-                                </div>
-                            </div>
-
-                            {/* Expanded details */}
-                            {selectedVideo?.id === video.id && (
-                                <div className="px-4 pb-4 pt-0 border-t border-[#333] mt-2">
-                                    <div className="space-y-2 text-xs">
-                                        <div className="flex justify-between">
-                                            <span className="text-[#888]">Asset ID:</span>
-                                            <span className="text-white font-mono">{video.assetId}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-[#888]">Tamaño exacto:</span>
-                                            <span className="text-white">{video.size.toLocaleString()} bytes</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-[#888]">Archivo:</span>
-                                            <span className="text-white truncate max-w-[200px]" title={video.fileName}>
-                                                {video.fileName}
-                                            </span>
+                                {/* Thumbnail placeholder */}
+                                <div
+                                    className="aspect-video bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] flex items-center justify-center relative hover:opacity-90 transition-opacity"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPlayingVideo(video);
+                                    }}
+                                >
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
+                                            <Play className="h-8 w-8 text-white ml-1" />
                                         </div>
                                     </div>
+                                    {/* Asset ID Badge */}
+                                    <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/70 text-xs text-[#888] font-mono">
+                                        {video.assetId.slice(0, 12)}...
+                                    </div>
+                                    {/* Size Badge */}
+                                    <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/70 text-xs text-white">
+                                        {video.sizeFormatted}
+                                    </div>
                                 </div>
-                            )}
+
+                                {/* Video Info */}
+                                <div className="p-4">
+                                    <p className="text-sm font-medium text-white truncate mb-2" title={video.fileName}>
+                                        {video.fileName}
+                                    </p>
+                                    <div className="flex items-center gap-1 text-xs text-[#888]">
+                                        <Calendar className="h-3 w-3" />
+                                        <span>{video.downloadedAtFormatted}</span>
+                                    </div>
+                                </div>
+
+                                {/* Expanded details */}
+                                {selectedVideo?.id === video.id && (
+                                    <div className="px-4 pb-4 pt-0 border-t border-[#333] mt-2">
+                                        <div className="space-y-2 text-xs">
+                                            <div className="flex justify-between">
+                                                <span className="text-[#888]">Asset ID:</span>
+                                                <span className="text-white font-mono">{video.assetId}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-[#888]">Tamaño exacto:</span>
+                                                <span className="text-white">{video.size.toLocaleString()} bytes</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-[#888]">Archivo:</span>
+                                                <span className="text-white truncate max-w-[200px]" title={video.fileName}>
+                                                    {video.fileName}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="rounded-xl border border-[#333] bg-[#0a0a0a] overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-white/5 text-[#888] font-medium border-b border-[#333]">
+                                    <tr>
+                                        <th className="px-4 py-3">Nombre</th>
+                                        <th className="px-4 py-3">Fecha</th>
+                                        <th className="px-4 py-3">Tipo</th>
+                                        <th className="px-4 py-3">Tamaño</th>
+                                        <th className="px-4 py-3">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#333]">
+                                    {data?.files.map((video) => (
+                                        <tr key={video.id} className="hover:bg-white/5 transition-colors group">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div
+                                                        className="w-8 h-8 rounded bg-[#222] flex items-center justify-center cursor-pointer hover:bg-[#333]"
+                                                        onClick={() => setPlayingVideo(video)}
+                                                    >
+                                                        <Play className="h-4 w-4 text-white" />
+                                                    </div>
+                                                    <span className="text-white font-medium truncate max-w-[300px]" title={video.fileName}>
+                                                        {video.fileName}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-[#ccc] whitespace-nowrap">
+                                                {video.downloadedAtFormatted}
+                                            </td>
+                                            <td className="px-4 py-3 text-[#888]">
+                                                MP4
+                                            </td>
+                                            <td className="px-4 py-3 text-[#ccc] font-mono">
+                                                {video.sizeFormatted}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 text-[#888] hover:text-white hover:bg-[#333]"
+                                                    onClick={() => setPlayingVideo(video)}
+                                                >
+                                                    Ver
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                    ))}
-                </div>
+                    </div>
+                )
             )}
 
             {/* Video Player Modal */}

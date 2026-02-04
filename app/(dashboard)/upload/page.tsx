@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Upload as UploadIcon, FileVideo, CheckCircle2, Loader2, ArrowRight, Save, RefreshCw, Calendar, Film } from "lucide-react";
+import { Upload as UploadIcon, FileVideo, CheckCircle2, Loader2, Save, Calendar, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
@@ -32,6 +32,7 @@ interface ProcessedData {
 export default function UploadPage() {
     const router = useRouter();
     const [step, setStep] = useState<"select" | "processing" | "review" | "success">("select");
+    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [videos, setVideos] = useState<VideoFile[]>([]);
     const [selectedVideo, setSelectedVideo] = useState<VideoFile | null>(null);
     const [processingStage, setProcessingStage] = useState<string>("");
@@ -140,35 +141,108 @@ export default function UploadPage() {
             {/* STEP 1: SELECT VIDEO */}
             {step === "select" && (
                 <div>
-                    <h2 className="text-lg font-semibold text-white mb-4">1. Selecciona un video descargado</h2>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-white">1. Selecciona un video descargado</h2>
+
+                        <div className="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg p-1">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8 rounded-md ${viewMode === "grid" ? "bg-[#333] text-white" : "text-[#888] hover:text-white"}`}
+                                onClick={() => setViewMode("grid")}
+                            >
+                                <LayoutGrid className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8 rounded-md ${viewMode === "list" ? "bg-[#333] text-white" : "text-[#888] hover:text-white"}`}
+                                onClick={() => setViewMode("list")}
+                            >
+                                <List className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+
                     {videos.length === 0 ? (
                         <div className="text-center p-12 border border-[#333] rounded-xl bg-[#0a0a0a]">
                             <p className="text-[#888]">No hay videos descargados disponibles.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {videos.map((video) => (
-                                <div
-                                    key={video.id}
-                                    onClick={() => handleSelectVideo(video)}
-                                    className="group cursor-pointer rounded-xl border border-[#333] bg-[#0a0a0a] overflow-hidden hover:border-green-500 transition-all"
-                                >
-                                    <div className="aspect-video bg-[#111] flex items-center justify-center relative">
-                                        <FileVideo className="h-10 w-10 text-[#555] group-hover:text-green-500 transition-colors" />
-                                        <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-xs text-white">
-                                            {video.sizeFormatted}
+                        viewMode === "grid" ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {videos.map((video) => (
+                                    <div
+                                        key={video.id}
+                                        onClick={() => handleSelectVideo(video)}
+                                        className="group cursor-pointer rounded-xl border border-[#333] bg-[#0a0a0a] overflow-hidden hover:border-green-500 transition-all"
+                                    >
+                                        <div className="aspect-video bg-[#111] flex items-center justify-center relative">
+                                            <FileVideo className="h-10 w-10 text-[#555] group-hover:text-green-500 transition-colors" />
+                                            <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-xs text-white">
+                                                {video.sizeFormatted}
+                                            </div>
+                                        </div>
+                                        <div className="p-4">
+                                            <p className="text-white font-medium truncate" title={video.fileName}>{video.fileName}</p>
+                                            <div className="flex items-center gap-2 mt-2 text-xs text-[#888]">
+                                                <Calendar className="h-3 w-3" />
+                                                {video.downloadedAtFormatted}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="p-4">
-                                        <p className="text-white font-medium truncate" title={video.fileName}>{video.fileName}</p>
-                                        <div className="flex items-center gap-2 mt-2 text-xs text-[#888]">
-                                            <Calendar className="h-3 w-3" />
-                                            {video.downloadedAtFormatted}
-                                        </div>
-                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="rounded-xl border border-[#333] bg-[#0a0a0a] overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-white/5 text-[#888] font-medium border-b border-[#333]">
+                                            <tr>
+                                                <th className="px-4 py-3">Nombre</th>
+                                                <th className="px-4 py-3">Fecha</th>
+                                                <th className="px-4 py-3">Tipo</th>
+                                                <th className="px-4 py-3">Tamaño</th>
+                                                <th className="px-4 py-3">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[#333]">
+                                            {videos.map((video) => (
+                                                <tr key={video.id} className="hover:bg-white/5 transition-colors group cursor-pointer" onClick={() => handleSelectVideo(video)}>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded bg-[#222] flex items-center justify-center group-hover:bg-green-500/20">
+                                                                <FileVideo className="h-4 w-4 text-[#888] group-hover:text-green-500" />
+                                                            </div>
+                                                            <span className="text-white font-medium truncate max-w-[300px]" title={video.fileName}>
+                                                                {video.fileName}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-[#ccc] whitespace-nowrap">
+                                                        {video.downloadedAtFormatted}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-[#888]">
+                                                        MP4
+                                                    </td>
+                                                    <td className="px-4 py-3 text-[#ccc] font-mono">
+                                                        {video.sizeFormatted}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <Button
+                                                            size="sm"
+                                                            className="h-8 bg-green-600 hover:bg-green-700 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            Seleccionar
+                                                        </Button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        )
                     )}
                 </div>
             )}
