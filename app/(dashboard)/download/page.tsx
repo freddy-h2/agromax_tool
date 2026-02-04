@@ -1,17 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Download as DownloadIcon, Play, Key, Loader2, CheckCircle } from "lucide-react";
+import { Download as DownloadIcon, Play, Key, Loader2, CheckCircle, XCircle, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+
+interface DownloadResult {
+    success: boolean;
+    message?: string;
+    fileName?: string;
+    filePath?: string;
+    size?: number;
+    error?: string;
+    details?: string;
+}
 
 export default function DownloadPage() {
     const [playbackId, setPlaybackId] = useState("");
     const [muxToken, setMuxToken] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [downloadResult, setDownloadResult] = useState<DownloadResult | null>(null);
 
     const handleDownload = async () => {
         if (!playbackId.trim() || !muxToken.trim()) {
@@ -19,48 +29,62 @@ export default function DownloadPage() {
         }
 
         setIsLoading(true);
+        setDownloadResult(null);
 
-        // Simulate processing time
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        try {
+            const response = await fetch("/api/download", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    playbackId: playbackId.trim(),
+                    muxToken: muxToken.trim(),
+                }),
+            });
 
-        setIsLoading(false);
-        setIsModalOpen(true);
+            const result = await response.json();
+            setDownloadResult(result);
+            setIsModalOpen(true);
+        } catch (error) {
+            setDownloadResult({
+                success: false,
+                error: "Error de conexión",
+                details: error instanceof Error ? error.message : "No se pudo conectar con el servidor",
+            });
+            setIsModalOpen(true);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
-        // Optionally clear form
-        // setPlaybackId("");
-        // setMuxToken("");
+    };
+
+    const formatBytes = (bytes: number) => {
+        if (bytes === 0) return "0 Bytes";
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
     };
 
     return (
         <div className="max-w-2xl">
             {/* Header */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="mb-8"
-            >
+            <div className="mb-8">
                 <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-neon-blue/10 border border-neon-blue/20">
-                        <DownloadIcon className="h-5 w-5 text-neon-blue" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-foreground">Download</h1>
+                    <DownloadIcon className="h-5 w-5 text-white" />
+                    <h1 className="text-2xl font-bold text-white">Download</h1>
                 </div>
-                <p className="text-foreground-muted">
-                    Descarga videos alojados en MUX ingresando el Playback ID y Token.
+                <p className="text-[#888]">
+                    Descarga videos alojados en MUX. Los archivos se guardan en la carpeta <code>/downloads</code> del proyecto.
                 </p>
-            </motion.div>
+            </div>
 
             {/* Download Form */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="glass rounded-xl p-8"
-            >
+            <div className="rounded-xl border border-[#333] bg-[#0a0a0a] p-8">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
@@ -72,12 +96,12 @@ export default function DownloadPage() {
                     <div>
                         <label
                             htmlFor="playbackId"
-                            className="block text-sm font-medium text-foreground-muted mb-2"
+                            className="block text-sm font-medium text-[#888] mb-2"
                         >
                             Playback ID
                         </label>
                         <div className="relative">
-                            <Play className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-muted" />
+                            <Play className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#666]" />
                             <Input
                                 id="playbackId"
                                 type="text"
@@ -88,7 +112,7 @@ export default function DownloadPage() {
                                 required
                             />
                         </div>
-                        <p className="text-xs text-foreground-muted mt-1.5">
+                        <p className="text-xs text-[#666] mt-1.5">
                             El ID de reproducción del video en MUX
                         </p>
                     </div>
@@ -97,12 +121,12 @@ export default function DownloadPage() {
                     <div>
                         <label
                             htmlFor="muxToken"
-                            className="block text-sm font-medium text-foreground-muted mb-2"
+                            className="block text-sm font-medium text-[#888] mb-2"
                         >
                             Token MUX
                         </label>
                         <div className="relative">
-                            <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-muted" />
+                            <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#666]" />
                             <Input
                                 id="muxToken"
                                 type="password"
@@ -113,7 +137,7 @@ export default function DownloadPage() {
                                 required
                             />
                         </div>
-                        <p className="text-xs text-foreground-muted mt-1.5">
+                        <p className="text-xs text-[#666] mt-1.5">
                             Token de acceso para la API de MUX
                         </p>
                     </div>
@@ -122,14 +146,13 @@ export default function DownloadPage() {
                     <div className="pt-4">
                         <Button
                             type="submit"
-                            variant="neon"
                             className="w-full"
                             disabled={isLoading || !playbackId.trim() || !muxToken.trim()}
                         >
                             {isLoading ? (
                                 <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Procesando...
+                                    Descargando...
                                 </>
                             ) : (
                                 <>
@@ -140,50 +163,70 @@ export default function DownloadPage() {
                         </Button>
                     </div>
                 </form>
-            </motion.div>
+            </div>
 
             {/* Info Card */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="mt-6 p-4 rounded-lg border border-border bg-background-secondary/50"
-            >
-                <p className="text-sm text-foreground-muted">
-                    <strong className="text-foreground">Nota:</strong> Los videos se
-                    descargan directamente desde los servidores de MUX. Asegúrate de tener
-                    los permisos necesarios para descargar el contenido.
-                </p>
-            </motion.div>
+            <div className="mt-6 p-4 rounded-lg border border-[#333] bg-[#0a0a0a]">
+                <div className="flex items-start gap-3">
+                    <FolderOpen className="h-5 w-5 text-white mt-0.5" />
+                    <div>
+                        <p className="text-sm text-white font-medium">
+                            Ubicación de descargas
+                        </p>
+                        <p className="text-xs text-[#888] mt-1">
+                            Los videos se guardan en: <code>agromax_tool/downloads/</code>
+                        </p>
+                    </div>
+                </div>
+            </div>
 
-            {/* Success Modal */}
+            {/* Result Modal */}
             <Modal
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
-                title="Descarga Iniciada"
+                title={downloadResult?.success ? "Descarga Exitosa" : "Error en Descarga"}
             >
                 <div className="text-center py-4">
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                        className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 mb-4"
-                    >
-                        <CheckCircle className="h-8 w-8 text-green-500" />
-                    </motion.div>
-                    <p className="text-foreground mb-2">
-                        El video correspondiente al Playback ID:
-                    </p>
-                    <p className="font-mono text-sm bg-background-secondary px-3 py-2 rounded-lg text-neon-blue mb-4">
-                        {playbackId}
-                    </p>
-                    <p className="text-foreground-muted">
-                        ha comenzado a descargarse.
-                    </p>
+                    {downloadResult?.success ? (
+                        <>
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 mb-4">
+                                <CheckCircle className="h-8 w-8 text-green-500" />
+                            </div>
+                            <p className="text-white mb-2">Video descargado exitosamente</p>
+                            <div className="space-y-2 text-left bg-black rounded-lg p-4 mt-4 border border-[#333]">
+                                <p className="text-sm">
+                                    <span className="text-[#888]">Archivo:</span>{" "}
+                                    <span className="text-white font-mono text-xs">{downloadResult.fileName}</span>
+                                </p>
+                                {downloadResult.size && (
+                                    <p className="text-sm">
+                                        <span className="text-[#888]">Tamaño:</span>{" "}
+                                        <span className="text-white">{formatBytes(downloadResult.size)}</span>
+                                    </p>
+                                )}
+                                <p className="text-sm">
+                                    <span className="text-[#888]">Ubicación:</span>{" "}
+                                    <span className="text-[#888] text-xs">/downloads/</span>
+                                </p>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 mb-4">
+                                <XCircle className="h-8 w-8 text-red-500" />
+                            </div>
+                            <p className="text-white mb-2">{downloadResult?.error || "Error desconocido"}</p>
+                            {downloadResult?.details && (
+                                <p className="text-sm text-[#888] bg-black rounded-lg p-3 mt-2 border border-[#333]">
+                                    {downloadResult.details}
+                                </p>
+                            )}
+                        </>
+                    )}
                 </div>
                 <div className="mt-4">
                     <Button
-                        variant="default"
+                        variant="outline"
                         className="w-full"
                         onClick={handleCloseModal}
                     >

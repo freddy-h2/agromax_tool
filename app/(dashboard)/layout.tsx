@@ -1,4 +1,4 @@
-import { Sidebar } from "@/components/sidebar";
+import { Navbar } from "@/components/navbar";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -17,10 +17,10 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            <Sidebar userEmail={user.email} />
-            <main className="ml-64 min-h-screen">
-                <div className="p-8">{children}</div>
+        <div className="min-h-screen bg-black">
+            <Navbar userEmail={user.email} />
+            <main className="pt-8">
+                <div className="max-w-7xl mx-auto px-6 py-8 animate-fade-in">{children}</div>
             </main>
         </div>
     );
