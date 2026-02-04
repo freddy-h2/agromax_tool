@@ -77,9 +77,23 @@ import { createContext, useContext } from "react"
 
 const TabsContext = createContext<{ value: string; onValueChange: (v: string) => void } | null>(null)
 
-const TabsRoot = ({ value, onValueChange, children, className }: any) => {
+const TabsRoot = ({ defaultValue, value: controlledValue, onValueChange, children, className }: any) => {
+    const [internalValue, setInternalValue] = React.useState(defaultValue)
+
+    const isControlled = controlledValue !== undefined
+    const value = isControlled ? controlledValue : internalValue
+
+    const handleValueChange = (newValue: string) => {
+        if (!isControlled) {
+            setInternalValue(newValue)
+        }
+        if (onValueChange) {
+            onValueChange(newValue)
+        }
+    }
+
     return (
-        <TabsContext.Provider value={{ value, onValueChange }}>
+        <TabsContext.Provider value={{ value, onValueChange: handleValueChange }}>
             <div className={cn("w-full", className)}>
                 {children}
             </div>
