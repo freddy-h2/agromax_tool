@@ -8,7 +8,7 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ userEmail }: DashboardClientProps) {
     return (
-        <div className="max-w-4xl">
+        <div className="max-w-4xl animate-fade-in">
             {/* Header */}
             <div className="mb-8">
                 <div className="flex items-center gap-3 mb-2">
