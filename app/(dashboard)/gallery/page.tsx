@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Images, Film, HardDrive, Calendar, RefreshCw, Play, Download } from "lucide-react";
+import { Images, Film, HardDrive, Calendar, RefreshCw, Play, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface VideoFile {
@@ -46,7 +46,7 @@ function VideoThumbnail({ fileName, assetId }: { fileName: string; assetId: stri
             <img
                 src={`/api/thumbnail?file=${encodeURIComponent(fileName)}`}
                 alt={`Thumbnail for ${assetId}`}
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoading ? "opacity-0" : "opacity-100"}`}
                 onLoad={() => setIsLoading(false)}
                 onError={() => {
                     setIsLoading(false);
@@ -63,10 +63,77 @@ function VideoThumbnail({ fileName, assetId }: { fileName: string; assetId: stri
     );
 }
 
+// Video Player Modal
+function VideoPlayerModal({
+    video,
+    onClose,
+}: {
+    video: VideoFile;
+    onClose: () => void;
+}) {
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === "Escape") onClose();
+        };
+        document.addEventListener("keydown", handleEsc);
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.removeEventListener("keydown", handleEsc);
+            document.body.style.overflow = "unset";
+        };
+    }, [onClose]);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+                onClick={onClose}
+            />
+
+            {/* Modal content */}
+            <div className="relative z-10 w-full max-w-5xl mx-4">
+                {/* Close button */}
+                <button
+                    onClick={onClose}
+                    className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors"
+                >
+                    <X className="h-6 w-6" />
+                </button>
+
+                {/* Video player */}
+                <div className="rounded-xl overflow-hidden bg-black">
+                    <video
+                        src={`/api/video?file=${encodeURIComponent(video.fileName)}`}
+                        controls
+                        autoPlay
+                        className="w-full aspect-video"
+                    >
+                        Tu navegador no soporta el elemento de video.
+                    </video>
+                </div>
+
+                {/* Video info */}
+                <div className="mt-4 p-4 rounded-xl border border-[#333] bg-[#0a0a0a]">
+                    <h3 className="text-white font-medium mb-2">{video.fileName}</h3>
+                    <div className="flex gap-4 text-sm text-[#888]">
+                        <span>Asset: {video.assetId}</span>
+                        <span>•</span>
+                        <span>{video.sizeFormatted}</span>
+                        <span>•</span>
+                        <span>{video.downloadedAtFormatted}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function GalleryPage() {
     const [data, setData] = useState<GalleryData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedVideo, setSelectedVideo] = useState<VideoFile | null>(null);
+    const [playingVideo, setPlayingVideo] = useState<VideoFile | null>(null);
 
     const fetchVideos = async () => {
         setIsLoading(true);
@@ -85,8 +152,21 @@ export default function GalleryPage() {
         fetchVideos();
     }, []);
 
+    const handlePlayVideo = (video: VideoFile, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setPlayingVideo(video);
+    };
+
     return (
         <div className="animate-fade-in">
+            {/* Video Player Modal */}
+            {playingVideo && (
+                <VideoPlayerModal
+                    video={playingVideo}
+                    onClose={() => setPlayingVideo(null)}
+                />
+            )}
+
             {/* Header */}
             <div className="mb-8 flex items-center justify-between">
                 <div>
@@ -98,11 +178,7 @@ export default function GalleryPage() {
                         Videos descargados de MUX almacenados localmente
                     </p>
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={fetchVideos}
-                    disabled={isLoading}
-                >
+                <Button variant="outline" onClick={fetchVideos} disabled={isLoading}>
                     <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
                     Actualizar
                 </Button>
@@ -128,7 +204,9 @@ export default function GalleryPage() {
                                 <HardDrive className="h-5 w-5 text-white" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-white">{data.totalSize || "0 Bytes"}</p>
+                                <p className="text-2xl font-bold text-white">
+                                    {data.totalSize || "0 Bytes"}
+                                </p>
                                 <p className="text-xs text-[#888]">Espacio utilizado</p>
                             </div>
                         </div>
@@ -162,7 +240,8 @@ export default function GalleryPage() {
                     </div>
                     <h3 className="text-lg font-medium text-white mb-2">No hay videos</h3>
                     <p className="text-[#888] max-w-md mx-auto">
-                        Aún no has descargado ningún video. Ve a la sección de Download para comenzar.
+                        Aún no has descargado ningún video. Ve a la sección de Download
+                        para comenzar.
                     </p>
                 </div>
             ) : (
@@ -170,12 +249,20 @@ export default function GalleryPage() {
                     {data?.files.map((video) => (
                         <div
                             key={video.id}
-                            className="rounded-xl border border-[#333] bg-[#0a0a0a] overflow-hidden hover:border-[#555] transition-colors cursor-pointer"
-                            onClick={() => setSelectedVideo(selectedVideo?.id === video.id ? null : video)}
+                            className="rounded-xl border border-[#333] bg-[#0a0a0a] overflow-hidden hover:border-[#555] transition-colors cursor-pointer group"
+                            onClick={() =>
+                                setSelectedVideo(selectedVideo?.id === video.id ? null : video)
+                            }
                         >
                             {/* Thumbnail */}
-                            <div className="aspect-video relative">
-                                <VideoThumbnail fileName={video.fileName} assetId={video.assetId} />
+                            <div
+                                className="aspect-video relative"
+                                onClick={(e) => handlePlayVideo(video, e)}
+                            >
+                                <VideoThumbnail
+                                    fileName={video.fileName}
+                                    assetId={video.assetId}
+                                />
                                 {/* Asset ID Badge */}
                                 <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/70 text-xs text-[#888] font-mono z-10">
                                     {video.assetId.slice(0, 12)}...
@@ -188,12 +275,24 @@ export default function GalleryPage() {
 
                             {/* Video Info */}
                             <div className="p-4">
-                                <p className="text-sm font-medium text-white truncate mb-2" title={video.fileName}>
+                                <p
+                                    className="text-sm font-medium text-white truncate mb-2"
+                                    title={video.fileName}
+                                >
                                     {video.fileName}
                                 </p>
-                                <div className="flex items-center gap-1 text-xs text-[#888]">
-                                    <Calendar className="h-3 w-3" />
-                                    <span>{video.downloadedAtFormatted}</span>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1 text-xs text-[#888]">
+                                        <Calendar className="h-3 w-3" />
+                                        <span>{video.downloadedAtFormatted}</span>
+                                    </div>
+                                    <button
+                                        onClick={(e) => handlePlayVideo(video, e)}
+                                        className="flex items-center gap-1 px-2 py-1 rounded-full bg-white text-black text-xs font-medium hover:bg-gray-200 transition-colors"
+                                    >
+                                        <Play className="h-3 w-3" />
+                                        Reproducir
+                                    </button>
                                 </div>
                             </div>
 
@@ -203,16 +302,14 @@ export default function GalleryPage() {
                                     <div className="space-y-2 text-xs">
                                         <div className="flex justify-between">
                                             <span className="text-[#888]">Asset ID:</span>
-                                            <span className="text-white font-mono">{video.assetId}</span>
+                                            <span className="text-white font-mono">
+                                                {video.assetId}
+                                            </span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-[#888]">Tamaño exacto:</span>
-                                            <span className="text-white">{video.size.toLocaleString()} bytes</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-[#888]">Archivo:</span>
-                                            <span className="text-white truncate max-w-[200px]" title={video.fileName}>
-                                                {video.fileName}
+                                            <span className="text-white">
+                                                {video.size.toLocaleString()} bytes
                                             </span>
                                         </div>
                                     </div>
