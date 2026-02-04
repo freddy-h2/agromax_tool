@@ -63,22 +63,29 @@ export default function DashboardClient({ userEmail, videos }: DashboardClientPr
                         {/* Thumbnail */}
                         <div className="relative aspect-video bg-black/50 overflow-hidden cursor-pointer" onClick={() => video.mux_playback_id && setSelectedVideo(video)}>
                             {/* Standard Mux Thumbnail URL or Placeholder */}
+                            {/* Standard Mux Thumbnail URL or Placeholder */}
                             {video.mux_playback_id ? (
                                 <img
-                                    src={`https://image.mux.com/${video.mux_playback_id}/thumbnail.jpg?width=640&height=360&fit_mode=smart`}
+                                    src={`https://image.mux.com/${video.mux_playback_id.trim()}/thumbnail.jpg`}
                                     alt={video.title}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                    onError={(e) => {
+                                        console.error("Image load error:", e.currentTarget.src);
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.parentElement?.querySelector('.fallback-placeholder')?.classList.remove('hidden');
+                                    }}
                                 />
-                            ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-background-secondary to-background p-4 text-center">
-                                    <div className="p-3 rounded-full bg-white/5 mb-2">
-                                        <VideoIcon className="h-8 w-8 text-foreground-muted" />
-                                    </div>
-                                    <span className="text-xs font-medium text-foreground-muted uppercase tracking-wider">
-                                        Solo Descarga
-                                    </span>
+                            ) : null}
+
+                            {/* Fallback Placeholder (shown if no ID or on Error) */}
+                            <div className={`fallback-placeholder absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-background-secondary to-background p-4 text-center ${video.mux_playback_id ? 'hidden' : ''}`}>
+                                <div className="p-3 rounded-full bg-white/5 mb-2">
+                                    <VideoIcon className="h-8 w-8 text-foreground-muted" />
                                 </div>
-                            )}
+                                <span className="text-xs font-medium text-foreground-muted uppercase tracking-wider">
+                                    {video.mux_playback_id ? "Vista previa no disponible" : "Solo Descarga"}
+                                </span>
+                            </div>
 
                             {/* Play Overlay - Only if playable */}
                             {video.mux_playback_id && (
