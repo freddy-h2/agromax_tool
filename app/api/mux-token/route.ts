@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
-const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID;
-const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET;
+// Signing Keys (para firmar URLs de playback) - diferentes de las API keys
+const MUX_SIGNING_KEY_ID = process.env.MUX_SIGNING_KEY_ID;
+const MUX_SIGNING_KEY_SECRET = process.env.MUX_SIGNING_KEY_SECRET;
 
 /**
  * Genera un token JWT firmado para Mux (playback o thumbnail).
@@ -10,9 +11,9 @@ const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET;
  */
 export async function POST(request: NextRequest) {
     try {
-        if (!MUX_TOKEN_ID || !MUX_TOKEN_SECRET) {
+        if (!MUX_SIGNING_KEY_ID || !MUX_SIGNING_KEY_SECRET) {
             return NextResponse.json(
-                { error: "Faltan MUX_TOKEN_ID o MUX_TOKEN_SECRET en .env" },
+                { error: "Faltan MUX_SIGNING_KEY_ID o MUX_SIGNING_KEY_SECRET en .env" },
                 { status: 500 }
             );
         }
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
         const aud = typeToAudience[type] || "v";
 
         // Generar el token JWT manualmente
-        const token = generateMuxJWT(playbackId, aud, MUX_TOKEN_ID, MUX_TOKEN_SECRET);
+        const token = generateMuxJWT(playbackId, aud, MUX_SIGNING_KEY_ID, MUX_SIGNING_KEY_SECRET);
 
         // Construir URLs firmadas
         let url = "";
