@@ -1,26 +1,108 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Dark theme base */
+  --background: #07110d;
+  --background-secondary: #0f1c16;
+  --foreground: #f0f0f5;
+  --foreground-muted: #9898a8;
+
+  /* Borders */
+  --border: #1f4234;
+  --border-hover: #2a5a46;
+
+  /* Neon accents for CTAs */
+  --neon-blue: #22dd60;
+  --neon-blue-glow: rgba(34, 221, 96, 0.4);
+  --neon-purple: #132d23;
+  --neon-purple-glow: rgba(19, 45, 35, 0.4);
+
+  /* Primary accent (neon blue mapped to green) */
+  --primary: #22dd60;
+  --primary-hover: #1eb850;
+  --primary-glow: rgba(34, 221, 96, 0.25);
+
+  /* Status colors */
+  --success: #22c55e;
+  --warning: #eab308;
+  --error: #ef4444;
+
+  /* Sidebar */
+  --sidebar-bg: #132d23;
+  --sidebar-hover: #1a3d30;
+  --sidebar-active: #1f4234;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
   --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-neon-blue: var(--neon-blue);
+  --color-neon-purple: var(--neon-purple);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  min-height: 100vh;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Neon glow effect for CTA buttons */
+.neon-glow {
+  box-shadow: 0 0 20px var(--neon-blue-glow),
+    0 0 40px var(--neon-blue-glow),
+    inset 0 0 10px var(--neon-blue-glow);
+}
+
+.neon-glow-purple {
+  box-shadow: 0 0 20px var(--neon-purple-glow),
+    0 0 40px var(--neon-purple-glow),
+    inset 0 0 10px var(--neon-purple-glow);
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(18, 18, 26, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
 }
