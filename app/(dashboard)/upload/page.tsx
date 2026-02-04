@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Upload as UploadIcon, FileVideo, CheckCircle2, Loader2, Save, Calendar, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 
@@ -35,6 +36,8 @@ export default function UploadPage() {
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [videos, setVideos] = useState<VideoFile[]>([]);
     const [selectedVideo, setSelectedVideo] = useState<VideoFile | null>(null);
+    const [pendingVideo, setPendingVideo] = useState<VideoFile | null>(null);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [processingStage, setProcessingStage] = useState<string>("");
     const [formData, setFormData] = useState<ProcessedData | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,10 +56,19 @@ export default function UploadPage() {
         fetchVideos();
     }, []);
 
-    // Handle File Selection
+    // Handle File Selection (Opens Confirmation Modal)
     const handleSelectVideo = (video: VideoFile) => {
-        setSelectedVideo(video);
-        startSimulation(video);
+        setPendingVideo(video);
+        setShowConfirmModal(true);
+    };
+
+    // Confirm and Start Processing
+    const confirmProcessing = () => {
+        if (pendingVideo) {
+            setSelectedVideo(pendingVideo);
+            setShowConfirmModal(false);
+            startSimulation(pendingVideo);
+        }
     };
 
     // Simulate Processing
@@ -360,6 +372,40 @@ export default function UploadPage() {
                     </div>
                 </div>
             )}
+
+            {/* Confirmation Modal */}
+            <Modal
+                isOpen={showConfirmModal}
+                onClose={() => setShowConfirmModal(false)}
+                title="¿Iniciar procesamiento?"
+            >
+                <div className="space-y-4">
+                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                        <p className="text-yellow-200 text-sm">
+                            <strong>Atención:</strong> Esta acción analizará el video utilizando Inteligencia Artificial para generar la transcripción y el resumen.
+                        </p>
+                    </div>
+                    <p className="text-[#ccc] text-sm">
+                        Al confirmar, se iniciará el proceso y se consumirán créditos de la API (simulado por ahora). ¿Deseas continuar con el video <strong>{pendingVideo?.fileName}</strong>?
+                    </p>
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setShowConfirmModal(false)}
+                            className="text-[#888] hover:text-white"
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={confirmProcessing}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin hidden" /> {/* Hidden for now */}
+                            Procesar Video
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
