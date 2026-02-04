@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { Home, Download, Upload, LogOut, Settings, FileText } from "lucide-react";
+import { Home, Download, Upload, LogOut, Settings, FileText, Film } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -19,6 +19,11 @@ const menuItems = [
         name: "Contenido",
         href: "/content",
         icon: FileText,
+    },
+    {
+        name: "Videos producción",
+        href: "/production-courses",
+        icon: Film,
     },
     {
         name: "Administrar",
