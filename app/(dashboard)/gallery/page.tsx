@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Images, Film, HardDrive, Calendar, RefreshCw, Play, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 
 interface VideoFile {
     id: string;
@@ -24,6 +25,7 @@ export default function GalleryPage() {
     const [data, setData] = useState<GalleryData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedVideo, setSelectedVideo] = useState<VideoFile | null>(null);
+    const [playingVideo, setPlayingVideo] = useState<VideoFile | null>(null);
 
     const fetchVideos = async () => {
         setIsLoading(true);
@@ -131,7 +133,13 @@ export default function GalleryPage() {
                             onClick={() => setSelectedVideo(selectedVideo?.id === video.id ? null : video)}
                         >
                             {/* Thumbnail placeholder */}
-                            <div className="aspect-video bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] flex items-center justify-center relative">
+                            <div
+                                className="aspect-video bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] flex items-center justify-center relative hover:opacity-90 transition-opacity"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPlayingVideo(video);
+                                }}
+                            >
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
                                         <Play className="h-8 w-8 text-white ml-1" />
@@ -183,6 +191,27 @@ export default function GalleryPage() {
                     ))}
                 </div>
             )}
+
+            {/* Video Player Modal */}
+            <Modal
+                isOpen={!!playingVideo}
+                onClose={() => setPlayingVideo(null)}
+                title={playingVideo?.fileName}
+                className="max-w-4xl"
+            >
+                {playingVideo && (
+                    <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+                        <video
+                            src={`/downloads/${playingVideo.fileName}`}
+                            className="h-full w-full"
+                            controls
+                            autoPlay
+                        >
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }

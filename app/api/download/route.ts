@@ -9,7 +9,7 @@ const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET;
 const MUX_BASE_URL = "https://api.mux.com/video/v1";
 
 // Directorio donde se guardarán los videos
-const DOWNLOADS_DIR = path.join(process.cwd(), "downloads");
+const DOWNLOADS_DIR = path.join(process.cwd(), "public", "downloads");
 
 // Helper para crear Basic Auth header
 function getAuthHeader(): string {

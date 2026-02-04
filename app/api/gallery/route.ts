@@ -3,7 +3,7 @@ import { readdir, stat } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 
-const DOWNLOADS_DIR = path.join(process.cwd(), "downloads");
+const DOWNLOADS_DIR = path.join(process.cwd(), "public", "downloads");
 
 interface VideoFile {
     id: string;
