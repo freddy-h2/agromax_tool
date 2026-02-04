@@ -42,3 +42,5 @@ next-env.d.ts
 
 #files
 *.py
+*.csv
+*.csv#
