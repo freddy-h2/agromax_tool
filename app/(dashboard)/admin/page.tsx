@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import DashboardClient from "./dashboard-client";
+import { AdminClient } from "./admin-client";
 
-export default async function DashboardPage() {
+export default async function AdminPage() {
     const supabase = await createClient();
     const {
         data: { user },
@@ -12,11 +12,11 @@ export default async function DashboardPage() {
         redirect("/login");
     }
 
-    // Fetch videos
+    // Fetch existing videos for the list
     const { data: videos } = await supabase
         .from("media")
         .select("*")
         .order("created_at", { ascending: false });
 
-    return <DashboardClient userEmail={user.email || "Usuario"} videos={videos || []} />;
+    return <AdminClient videos={videos || []} />;
 }

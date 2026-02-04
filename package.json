@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@mux/mux-node": "^12.8.1",
+    "@mux/mux-player-react": "^3.10.2",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.94.0",
     "class-variance-authority": "^0.7.1",
