@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Download as DownloadIcon, Play, Key, Loader2, CheckCircle, XCircle, FolderOpen } from "lucide-react";
+import { useState, useRef } from "react";
+import { Download as DownloadIcon, Film, Loader2, CheckCircle, XCircle, FolderOpen, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+
+interface LogEntry {
+    type: "info" | "success" | "error" | "warning";
+    message: string;
+    timestamp: string;
+}
 
 interface DownloadResult {
     success: boolean;
@@ -17,19 +23,25 @@ interface DownloadResult {
 }
 
 export default function DownloadPage() {
-    const [playbackId, setPlaybackId] = useState("");
-    const [muxToken, setMuxToken] = useState("");
+    const [assetId, setAssetId] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [downloadResult, setDownloadResult] = useState<DownloadResult | null>(null);
+    const [logs, setLogs] = useState<LogEntry[]>([]);
+    const logsEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = () => {
+        logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
 
     const handleDownload = async () => {
-        if (!playbackId.trim() || !muxToken.trim()) {
+        if (!assetId.trim()) {
             return;
         }
 
         setIsLoading(true);
         setDownloadResult(null);
+        setLogs([]);
 
         try {
             const response = await fetch("/api/download", {
@@ -38,14 +50,45 @@ export default function DownloadPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    playbackId: playbackId.trim(),
-                    muxToken: muxToken.trim(),
+                    assetId: assetId.trim(),
                 }),
             });
 
-            const result = await response.json();
-            setDownloadResult(result);
-            setIsModalOpen(true);
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+
+            if (!reader) {
+                throw new Error("No se pudo leer la respuesta");
+            }
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const text = decoder.decode(value);
+                const lines = text.split("\n\n").filter(line => line.startsWith("data: "));
+
+                for (const line of lines) {
+                    const jsonStr = line.replace("data: ", "");
+                    try {
+                        const data = JSON.parse(jsonStr);
+
+                        if (data.type === "result") {
+                            setDownloadResult(data);
+                            setIsModalOpen(true);
+                        } else {
+                            setLogs(prev => [...prev, {
+                                type: data.type,
+                                message: data.message,
+                                timestamp: data.timestamp,
+                            }]);
+                            setTimeout(scrollToBottom, 100);
+                        }
+                    } catch {
+                        // Ignorar líneas que no son JSON válido
+                    }
+                }
+            }
         } catch (error) {
             setDownloadResult({
                 success: false,
@@ -70,8 +113,22 @@ export default function DownloadPage() {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
     };
 
+    const getLogColor = (type: string) => {
+        switch (type) {
+            case "success": return "text-green-400";
+            case "error": return "text-red-400";
+            case "warning": return "text-yellow-400";
+            default: return "text-[#888]";
+        }
+    };
+
+    const formatTime = (timestamp: string) => {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    };
+
     return (
-        <div className="max-w-2xl animate-fade-in">
+        <div className="animate-fade-in">
             {/* Header */}
             <div className="mb-8">
                 <div className="flex items-center gap-3 mb-2">
@@ -79,103 +136,112 @@ export default function DownloadPage() {
                     <h1 className="text-2xl font-bold text-white">Download</h1>
                 </div>
                 <p className="text-[#888]">
-                    Descarga videos alojados en MUX. Los archivos se guardan en la carpeta <code>/downloads</code> del proyecto.
+                    Descarga videos de MUX usando el Asset ID. Los archivos master se guardan en <code>/downloads</code>
                 </p>
             </div>
 
-            {/* Download Form */}
-            <div className="rounded-xl border border-[#333] bg-[#0a0a0a] p-8">
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        handleDownload();
-                    }}
-                    className="space-y-6"
-                >
-                    {/* Playback ID */}
-                    <div>
-                        <label
-                            htmlFor="playbackId"
-                            className="block text-sm font-medium text-[#888] mb-2"
+            {/* Main content - Two column layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left column - Download Form */}
+                <div className="space-y-6">
+                    <div className="rounded-xl border border-[#333] bg-[#0a0a0a] p-8">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleDownload();
+                            }}
+                            className="space-y-6"
                         >
-                            Playback ID
-                        </label>
-                        <div className="relative">
-                            <Play className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#666]" />
-                            <Input
-                                id="playbackId"
-                                type="text"
-                                placeholder="Ej: a4nOgmxGWg6gULfcBbAa"
-                                value={playbackId}
-                                onChange={(e) => setPlaybackId(e.target.value)}
-                                className="pl-10"
-                                required
-                            />
+                            {/* Asset ID */}
+                            <div>
+                                <label
+                                    htmlFor="assetId"
+                                    className="block text-sm font-medium text-[#888] mb-2"
+                                >
+                                    Asset ID
+                                </label>
+                                <div className="relative">
+                                    <Film className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#666]" />
+                                    <Input
+                                        id="assetId"
+                                        type="text"
+                                        placeholder="Ej: BNqaqyl4edPLEmyegCNfze2BgwQgjijYIYqeaidHDq00"
+                                        value={assetId}
+                                        onChange={(e) => setAssetId(e.target.value)}
+                                        className="pl-10"
+                                        required
+                                        disabled={isLoading}
+                                    />
+                                </div>
+                                <p className="text-xs text-[#666] mt-1.5">
+                                    El identificador único del asset en MUX
+                                </p>
+                            </div>
+
+                            {/* Download Button */}
+                            <Button
+                                type="submit"
+                                className="w-full"
+                                disabled={isLoading || !assetId.trim()}
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Descargando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <DownloadIcon className="h-4 w-4" />
+                                        Descargar
+                                    </>
+                                )}
+                            </Button>
+                        </form>
+                    </div>
+
+                    {/* Info Card */}
+                    <div className="p-4 rounded-lg border border-[#333] bg-[#0a0a0a]">
+                        <div className="flex items-start gap-3">
+                            <FolderOpen className="h-5 w-5 text-white mt-0.5" />
+                            <div>
+                                <p className="text-sm text-white font-medium">
+                                    Ubicación de descargas
+                                </p>
+                                <p className="text-xs text-[#888] mt-1">
+                                    <code>agromax_tool/downloads/</code>
+                                </p>
+                            </div>
                         </div>
-                        <p className="text-xs text-[#666] mt-1.5">
-                            El ID de reproducción del video en MUX
-                        </p>
+                    </div>
+                </div>
+
+                {/* Right column - Log Panel */}
+                <div className="rounded-xl border border-[#333] bg-[#0a0a0a] p-4 h-[400px] flex flex-col">
+                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#333]">
+                        <Terminal className="h-4 w-4 text-yellow-500" />
+                        <span className="text-sm font-medium text-white">Consola de proceso</span>
+                        {isLoading && (
+                            <span className="ml-auto flex items-center gap-1 text-xs text-yellow-500">
+                                <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                En progreso
+                            </span>
+                        )}
                     </div>
 
-                    {/* MUX Token */}
-                    <div>
-                        <label
-                            htmlFor="muxToken"
-                            className="block text-sm font-medium text-[#888] mb-2"
-                        >
-                            Token MUX
-                        </label>
-                        <div className="relative">
-                            <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#666]" />
-                            <Input
-                                id="muxToken"
-                                type="password"
-                                placeholder="Tu token de autenticación MUX"
-                                value={muxToken}
-                                onChange={(e) => setMuxToken(e.target.value)}
-                                className="pl-10"
-                                required
-                            />
-                        </div>
-                        <p className="text-xs text-[#666] mt-1.5">
-                            Token de acceso para la API de MUX
-                        </p>
-                    </div>
-
-                    {/* Download Button */}
-                    <div className="pt-4">
-                        <Button
-                            type="submit"
-                            className="w-full"
-                            disabled={isLoading || !playbackId.trim() || !muxToken.trim()}
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Descargando...
-                                </>
-                            ) : (
-                                <>
-                                    <DownloadIcon className="h-4 w-4" />
-                                    Descargar
-                                </>
-                            )}
-                        </Button>
-                    </div>
-                </form>
-            </div>
-
-            {/* Info Card */}
-            <div className="mt-6 p-4 rounded-lg border border-[#333] bg-[#0a0a0a]">
-                <div className="flex items-start gap-3">
-                    <FolderOpen className="h-5 w-5 text-white mt-0.5" />
-                    <div>
-                        <p className="text-sm text-white font-medium">
-                            Ubicación de descargas
-                        </p>
-                        <p className="text-xs text-[#888] mt-1">
-                            Los videos se guardan en: <code>agromax_tool/downloads/</code>
-                        </p>
+                    <div className="flex-1 overflow-y-auto font-mono text-xs space-y-1">
+                        {logs.length === 0 ? (
+                            <div className="h-full flex items-center justify-center text-[#555]">
+                                <p>Los logs aparecerán aquí cuando inicies una descarga</p>
+                            </div>
+                        ) : (
+                            logs.map((log, index) => (
+                                <div key={index} className="flex gap-2">
+                                    <span className="text-[#555] shrink-0">[{formatTime(log.timestamp)}]</span>
+                                    <span className={getLogColor(log.type)}>{log.message}</span>
+                                </div>
+                            ))
+                        )}
+                        <div ref={logsEndRef} />
                     </div>
                 </div>
             </div>
@@ -196,7 +262,7 @@ export default function DownloadPage() {
                             <div className="space-y-2 text-left bg-black rounded-lg p-4 mt-4 border border-[#333]">
                                 <p className="text-sm">
                                     <span className="text-[#888]">Archivo:</span>{" "}
-                                    <span className="text-white font-mono text-xs">{downloadResult.fileName}</span>
+                                    <span className="text-white font-mono text-xs break-all">{downloadResult.fileName}</span>
                                 </p>
                                 {downloadResult.size && (
                                     <p className="text-sm">
@@ -204,10 +270,6 @@ export default function DownloadPage() {
                                         <span className="text-white">{formatBytes(downloadResult.size)}</span>
                                     </p>
                                 )}
-                                <p className="text-sm">
-                                    <span className="text-[#888]">Ubicación:</span>{" "}
-                                    <span className="text-[#888] text-xs">/downloads/</span>
-                                </p>
                             </div>
                         </>
                     ) : (

@@ -51,6 +51,16 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23eab308' d='M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 0 1 .35-.15h6.87c.48 0 .72-.59.35-.94l-12.6-11.6c-.33-.31-.68-.07-.68.61z'/%3E%3C/svg%3E") 4 4, auto;
+}
+
+/* Custom cursor for clickable elements */
+a,
+button,
+[role="button"],
+input[type="submit"],
+input[type="button"] {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23eab308' d='M10 2v8H2v2h8v8h2v-8h8v-2h-8V2z'/%3E%3C/svg%3E") 12 12, pointer;
 }
 
 /* Scrollbar styling */
