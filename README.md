@@ -1,5 +1,20 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Transcripción con Whisper
+
+Para usar la transcripción automática de videos (Editor de Contenido IA):
+
+1. **Instalar ffmpeg** en tu sistema
+2. **Iniciar el microservicio Whisper:**
+   ```bash
+   cd whisper-service
+   pip install -r requirements.txt
+   uvicorn main:app --host 0.0.0.0 --port 8000
+   ```
+3. El servicio debe estar en `http://localhost:8000` (o configura `WHISPER_SERVICE_URL` en `.env`)
+
+Ver `whisper-service/README.md` para más detalles.
+
 ## Getting Started
 
 First, run the development server:

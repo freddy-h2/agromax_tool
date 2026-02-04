@@ -87,13 +87,24 @@ export function ContentClient({ videos }: ContentClientProps) {
     const handleGenerateTranscription = async () => {
         if (!selectedVideo) return;
         setGeneratingTranscription(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        const mockTranscription = `## Transcripción Generada por IA\n\nEste es un ejemplo simulado de lo que devolvería el servicio de transcripción. En este video, exploramos las técnicas avanzadas de agricultura sostenible...\n\n- Punto clave 1: Optimización de recursos hídricos.\n- Punto clave 2: Uso de sensores IoT para monitoreo de cultivos.\n\nLa conclusión principal es que la tecnología es un aliado indispensable para el agricultor moderno.`;
-
-        handleChange("transcription", mockTranscription);
-        setGeneratingTranscription(false);
+        try {
+            const res = await fetch("/api/transcribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ videoId: selectedVideo.id }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                const msg = data.details || data.error || "Error al transcribir";
+                throw new Error(msg);
+            }
+            handleChange("transcription", data.transcription || "");
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Error desconocido";
+            alert(`Error: ${msg}`);
+        } finally {
+            setGeneratingTranscription(false);
+        }
     };
 
     const handleGenerateField = async (field: "title" | "resumen" | "description") => {
@@ -244,14 +255,14 @@ export function ContentClient({ videos }: ContentClientProps) {
                                     {/* AI Transcription Action */}
                                     <div className="bg-neon-blue/5 border border-neon-blue/10 rounded-lg p-4">
                                         <div className="flex items-center justify-between gap-4">
-                                            <div>
+                                            <div className="flex-1 min-w-0">
                                                 <h4 className="text-sm font-medium text-neon-blue mb-1">Generación de Texto</h4>
                                                 <p className="text-xs text-foreground-muted">
                                                     Analiza el audio del video para habilitar las funciones de IA.
-                                                    {hasTranscription && (
+                                                    {hasTranscription && !generatingTranscription && (
                                                         <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-500/10 text-green-500 uppercase tracking-wide">
                                                             <Check className="h-3 w-3 mr-1" />
-                                                            Transcripción Lista (Oculta)
+                                                            Transcripción Lista
                                                         </span>
                                                     )}
                                                 </p>
@@ -260,7 +271,7 @@ export function ContentClient({ videos }: ContentClientProps) {
                                                 type="button"
                                                 onClick={handleGenerateTranscription}
                                                 disabled={generatingTranscription}
-                                                className="bg-neon-blue/10 hover:bg-neon-blue/20 text-neon-blue border border-neon-blue/30 rounded-lg py-2 px-4 flex items-center gap-2 text-sm font-medium transition-all"
+                                                className="shrink-0 bg-neon-blue/10 hover:bg-neon-blue/20 text-neon-blue border border-neon-blue/30 rounded-lg py-2 px-4 flex items-center gap-2 text-sm font-medium transition-all disabled:opacity-70"
                                             >
                                                 {generatingTranscription ? (
                                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -270,6 +281,26 @@ export function ContentClient({ videos }: ContentClientProps) {
                                                 {formData.transcription ? "Regenerar Análisis" : "Analizar Video"}
                                             </button>
                                         </div>
+                                        {generatingTranscription && (
+                                            <div className="mt-4 space-y-2">
+                                                <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                                                    <motion.div
+                                                        className="h-full bg-neon-blue rounded-full"
+                                                        initial={{ x: "-100%" }}
+                                                        animate={{ x: "200%" }}
+                                                        transition={{
+                                                            duration: 1.8,
+                                                            repeat: Infinity,
+                                                            ease: "easeInOut",
+                                                        }}
+                                                        style={{ width: "40%" }}
+                                                    />
+                                                </div>
+                                                <p className="text-xs text-foreground-muted animate-pulse">
+                                                    Transcribiendo audio… Puede tardar varios minutos en videos largos. No cierres esta página.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Metadata Fields with AI */}
@@ -318,6 +349,23 @@ export function ContentClient({ videos }: ContentClientProps) {
                                                 className="min-h-[120px]"
                                                 placeholder="Descripción original del video..."
                                             />
+                                        </div>
+
+                                        {/* TRANSCRIPCIÓN */}
+                                        <div className="space-y-2">
+                                            <Label>Transcripción</Label>
+                                            <Textarea
+                                                value={formData.transcription}
+                                                onChange={(e) => handleChange("transcription", e.target.value)}
+                                                className="min-h-[180px] font-mono text-xs whitespace-pre-wrap"
+                                                placeholder="La transcripción aparecerá aquí después de analizar el video..."
+                                                readOnly={generatingTranscription}
+                                            />
+                                            {!formData.transcription && !generatingTranscription && (
+                                                <p className="text-xs text-foreground-muted">
+                                                    Pulsa &quot;Analizar Video&quot; para generar la transcripción del audio.
+                                                </p>
+                                            )}
                                         </div>
 
                                         {/* RESUMEN (Markdown) */}
