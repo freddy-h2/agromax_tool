@@ -2,35 +2,35 @@
 
 :root {
   /* Dark theme base */
-  --background: #0a0a0f;
-  --background-secondary: #12121a;
+  --background: #07110d;
+  --background-secondary: #0f1c16;
   --foreground: #f0f0f5;
   --foreground-muted: #9898a8;
-  
+
   /* Borders */
-  --border: #2a2a3c;
-  --border-hover: #3a3a4c;
-  
+  --border: #1f4234;
+  --border-hover: #2a5a46;
+
   /* Neon accents for CTAs */
-  --neon-blue: #00d4ff;
-  --neon-blue-glow: rgba(0, 212, 255, 0.4);
-  --neon-purple: #a855f7;
-  --neon-purple-glow: rgba(168, 85, 247, 0.4);
-  
-  /* Primary accent (neon blue) */
-  --primary: #00d4ff;
-  --primary-hover: #00b8e6;
-  --primary-glow: rgba(0, 212, 255, 0.25);
-  
+  --neon-blue: #22dd60;
+  --neon-blue-glow: rgba(34, 221, 96, 0.4);
+  --neon-purple: #132d23;
+  --neon-purple-glow: rgba(19, 45, 35, 0.4);
+
+  /* Primary accent (neon blue mapped to green) */
+  --primary: #22dd60;
+  --primary-hover: #1eb850;
+  --primary-glow: rgba(34, 221, 96, 0.25);
+
   /* Status colors */
   --success: #22c55e;
   --warning: #eab308;
   --error: #ef4444;
-  
+
   /* Sidebar */
-  --sidebar-bg: #0d0d14;
-  --sidebar-hover: #1a1a28;
-  --sidebar-active: #1e1e2e;
+  --sidebar-bg: #132d23;
+  --sidebar-hover: #1a3d30;
+  --sidebar-active: #1f4234;
 }
 
 @theme inline {
@@ -90,14 +90,14 @@ body {
 /* Neon glow effect for CTA buttons */
 .neon-glow {
   box-shadow: 0 0 20px var(--neon-blue-glow),
-              0 0 40px var(--neon-blue-glow),
-              inset 0 0 10px var(--neon-blue-glow);
+    0 0 40px var(--neon-blue-glow),
+    inset 0 0 10px var(--neon-blue-glow);
 }
 
 .neon-glow-purple {
   box-shadow: 0 0 20px var(--neon-purple-glow),
-              0 0 40px var(--neon-purple-glow),
-              inset 0 0 10px var(--neon-purple-glow);
+    0 0 40px var(--neon-purple-glow),
+    inset 0 0 10px var(--neon-purple-glow);
 }
 
 /* Glass effect */

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { Home, Download, Upload, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -49,9 +50,16 @@ export function Sidebar({ userEmail }: SidebarProps) {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="text-xl font-bold bg-gradient-to-r from-neon-blue to-neon-purple bg-clip-text text-transparent"
+                    className="flex items-center justify-center"
                 >
-                    Video Manager
+                    <Image
+                        src="/img/agro_max_logo.png"
+                        alt="Agro Max Logo"
+                        width={180}
+                        height={50}
+                        className="object-contain"
+                        priority
+                    />
                 </motion.h1>
                 <p className="text-xs text-foreground-muted mt-1 truncate">
                     {userEmail || "Usuario"}
@@ -119,6 +127,6 @@ export function Sidebar({ userEmail }: SidebarProps) {
                     <span className="font-medium">Cerrar Sesión</span>
                 </motion.button>
             </div>
-        </aside>
+        </aside >
     );
 }
