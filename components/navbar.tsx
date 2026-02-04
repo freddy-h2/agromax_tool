@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Home, Download, Upload, LogOut } from "lucide-react";
+import { Home, Download, Upload, LogOut, Images } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -18,6 +18,11 @@ const menuItems = [
         name: "Download",
         href: "/download",
         icon: Download,
+    },
+    {
+        name: "Galería",
+        href: "/gallery",
+        icon: Images,
     },
     {
         name: "Upload",
