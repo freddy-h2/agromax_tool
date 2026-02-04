@@ -28,6 +28,7 @@ export default function DownloadPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [downloadResult, setDownloadResult] = useState<DownloadResult | null>(null);
     const [logs, setLogs] = useState<LogEntry[]>([]);
+    const [showConsole, setShowConsole] = useState(false);
     const logsEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -39,6 +40,8 @@ export default function DownloadPage() {
             return;
         }
 
+        // Mostrar la consola con animación
+        setShowConsole(true);
         setIsLoading(true);
         setDownloadResult(null);
         setLogs([]);
@@ -140,108 +143,122 @@ export default function DownloadPage() {
                 </p>
             </div>
 
-            {/* Main content - Two column layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Main content - Animated layout */}
+            <div className="flex gap-6 justify-center">
                 {/* Left column - Download Form */}
-                <div className="space-y-6">
-                    <div className="rounded-xl border border-[#333] bg-[#0a0a0a] p-8">
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                handleDownload();
-                            }}
-                            className="space-y-6"
-                        >
-                            {/* Asset ID */}
-                            <div>
-                                <label
-                                    htmlFor="assetId"
-                                    className="block text-sm font-medium text-[#888] mb-2"
-                                >
-                                    Asset ID
-                                </label>
-                                <div className="relative">
-                                    <Film className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#666]" />
-                                    <Input
-                                        id="assetId"
-                                        type="text"
-                                        placeholder="Ej: BNqaqyl4edPLEmyegCNfze2BgwQgjijYIYqeaidHDq00"
-                                        value={assetId}
-                                        onChange={(e) => setAssetId(e.target.value)}
-                                        className="pl-10"
-                                        required
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                                <p className="text-xs text-[#666] mt-1.5">
-                                    El identificador único del asset en MUX
-                                </p>
-                            </div>
-
-                            {/* Download Button */}
-                            <Button
-                                type="submit"
-                                className="w-full"
-                                disabled={isLoading || !assetId.trim()}
+                <div
+                    className={`transition-all duration-500 ease-in-out ${showConsole
+                            ? "w-1/2 translate-x-0"
+                            : "w-full max-w-lg"
+                        }`}
+                >
+                    <div className="space-y-6">
+                        <div className="rounded-xl border border-[#333] bg-[#0a0a0a] p-8">
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    handleDownload();
+                                }}
+                                className="space-y-6"
                             >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Descargando...
-                                    </>
-                                ) : (
-                                    <>
-                                        <DownloadIcon className="h-4 w-4" />
-                                        Descargar
-                                    </>
-                                )}
-                            </Button>
-                        </form>
-                    </div>
+                                {/* Asset ID */}
+                                <div>
+                                    <label
+                                        htmlFor="assetId"
+                                        className="block text-sm font-medium text-[#888] mb-2"
+                                    >
+                                        Asset ID
+                                    </label>
+                                    <div className="relative">
+                                        <Film className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#666]" />
+                                        <Input
+                                            id="assetId"
+                                            type="text"
+                                            placeholder="Ej: BNqaqyl4edPLEmyegCNfze2BgwQgjijYIYqeaidHDq00"
+                                            value={assetId}
+                                            onChange={(e) => setAssetId(e.target.value)}
+                                            className="pl-10"
+                                            required
+                                            disabled={isLoading}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-[#666] mt-1.5">
+                                        El identificador único del asset en MUX
+                                    </p>
+                                </div>
 
-                    {/* Info Card */}
-                    <div className="p-4 rounded-lg border border-[#333] bg-[#0a0a0a]">
-                        <div className="flex items-start gap-3">
-                            <FolderOpen className="h-5 w-5 text-white mt-0.5" />
-                            <div>
-                                <p className="text-sm text-white font-medium">
-                                    Ubicación de descargas
-                                </p>
-                                <p className="text-xs text-[#888] mt-1">
-                                    <code>agromax_tool/downloads/</code>
-                                </p>
+                                {/* Download Button */}
+                                <Button
+                                    type="submit"
+                                    className="w-full"
+                                    disabled={isLoading || !assetId.trim()}
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Descargando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <DownloadIcon className="h-4 w-4" />
+                                            Descargar
+                                        </>
+                                    )}
+                                </Button>
+                            </form>
+                        </div>
+
+                        {/* Info Card */}
+                        <div className="p-4 rounded-lg border border-[#333] bg-[#0a0a0a]">
+                            <div className="flex items-start gap-3">
+                                <FolderOpen className="h-5 w-5 text-white mt-0.5" />
+                                <div>
+                                    <p className="text-sm text-white font-medium">
+                                        Ubicación de descargas
+                                    </p>
+                                    <p className="text-xs text-[#888] mt-1">
+                                        <code>agromax_tool/downloads/</code>
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Right column - Log Panel */}
-                <div className="rounded-xl border border-[#333] bg-[#0a0a0a] p-4 h-[400px] flex flex-col">
-                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#333]">
-                        <Terminal className="h-4 w-4 text-yellow-500" />
-                        <span className="text-sm font-medium text-white">Consola de proceso</span>
-                        {isLoading && (
-                            <span className="ml-auto flex items-center gap-1 text-xs text-yellow-500">
-                                <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-                                En progreso
-                            </span>
-                        )}
-                    </div>
+                {/* Right column - Log Panel (appears when downloading) */}
+                <div
+                    className={`transition-all duration-500 ease-in-out overflow-hidden ${showConsole
+                            ? "w-1/2 opacity-100"
+                            : "w-0 opacity-0"
+                        }`}
+                >
+                    <div className="rounded-xl border border-[#333] bg-[#0a0a0a] p-4 h-[400px] flex flex-col">
+                        <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#333]">
+                            <Terminal className="h-4 w-4 text-yellow-500" />
+                            <span className="text-sm font-medium text-white">Consola de proceso</span>
+                            {isLoading && (
+                                <span className="ml-auto flex items-center gap-1 text-xs text-yellow-500">
+                                    <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                    En progreso
+                                </span>
+                            )}
+                        </div>
 
-                    <div className="flex-1 overflow-y-auto font-mono text-xs space-y-1">
-                        {logs.length === 0 ? (
-                            <div className="h-full flex items-center justify-center text-[#555]">
-                                <p>Los logs aparecerán aquí cuando inicies una descarga</p>
-                            </div>
-                        ) : (
-                            logs.map((log, index) => (
-                                <div key={index} className="flex gap-2">
-                                    <span className="text-[#555] shrink-0">[{formatTime(log.timestamp)}]</span>
-                                    <span className={getLogColor(log.type)}>{log.message}</span>
+                        <div className="flex-1 overflow-y-auto font-mono text-xs space-y-1">
+                            {logs.length === 0 ? (
+                                <div className="h-full flex items-center justify-center text-[#555]">
+                                    <p>Esperando inicio de descarga...</p>
                                 </div>
-                            ))
-                        )}
-                        <div ref={logsEndRef} />
+                            ) : (
+                                logs.map((log, index) => (
+                                    <div key={index} className="flex gap-2">
+                                        <span className="text-[#555] shrink-0">[{formatTime(log.timestamp)}]</span>
+                                        <span className={getLogColor(log.type)}>{log.message}</span>
+                                    </div>
+                                ))
+                            )}
+                            <div ref={logsEndRef} />
+                        </div>
                     </div>
                 </div>
             </div>
