@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { Home, Download, Upload, LogOut } from "lucide-react";
+import { Home, Download, Upload, LogOut, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -16,14 +16,9 @@ const menuItems = [
         icon: Home,
     },
     {
-        name: "Download",
-        href: "/download",
-        icon: Download,
-    },
-    {
-        name: "Upload",
-        href: "/upload",
-        icon: Upload,
+        name: "Administrar",
+        href: "/admin",
+        icon: Settings,
     },
 ];
 
@@ -57,7 +52,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
                         alt="Agro Max Logo"
                         width={180}
                         height={50}
-                        className="object-contain"
+                        className="object-contain w-auto h-auto"
                         priority
                     />
                 </motion.h1>
@@ -127,6 +122,6 @@ export function Sidebar({ userEmail }: SidebarProps) {
                     <span className="font-medium">Cerrar Sesión</span>
                 </motion.button>
             </div>
-        </aside >
+        </aside>
     );
 }

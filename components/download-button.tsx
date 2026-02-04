@@ -1,0 +1,98 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { Download, Loader2, Check } from "lucide-react";
+
+interface DownloadButtonProps {
+    videoId: string;
+}
+
+export function DownloadButton({ videoId }: DownloadButtonProps) {
+    const [status, setStatus] = useState<"idle" | "processing" | "ready" | "error">("idle");
+    const [loading, setLoading] = useState(false);
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    const checkDownloadStatus = async () => {
+        try {
+            const response = await fetch("/api/download-video", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ videoId }),
+            });
+
+            const data = await response.json();
+
+            if (data.status === "ready" && data.url) {
+                setStatus("ready");
+                setLoading(false);
+                if (intervalRef.current) clearInterval(intervalRef.current);
+
+                // Trigger download
+                const link = document.createElement("a");
+                link.href = data.url;
+                link.download = ""; // Use default filename from URL or header
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else if (data.status === "processing") {
+                setStatus("processing");
+                // Keep polling
+            } else {
+                setStatus("error");
+                setLoading(false);
+                if (intervalRef.current) clearInterval(intervalRef.current);
+                alert(data.error || "Error preparing download");
+            }
+        } catch (e) {
+            console.error(e);
+            setStatus("error");
+            setLoading(false);
+            if (intervalRef.current) clearInterval(intervalRef.current);
+        }
+    };
+
+    const handleDownload = () => {
+        setLoading(true);
+        setStatus("processing");
+        checkDownloadStatus(); // Initial check
+
+        // Start polling every 3 seconds
+        intervalRef.current = setInterval(checkDownloadStatus, 3000);
+    };
+
+    // Cleanup interval on unmount
+    useEffect(() => {
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+        };
+    }, []);
+
+    return (
+        <button
+            onClick={handleDownload}
+            disabled={loading}
+            className={`p-2 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium
+                ${loading
+                    ? "text-neon-purple bg-neon-purple/10 cursor-not-allowed"
+                    : "text-foreground-muted hover:text-foreground hover:bg-white/5"
+                }`}
+            title="Descargar Video (Master)"
+        >
+            {loading ? (
+                <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Preparando...</span>
+                </>
+            ) : status === "ready" ? (
+                <>
+                    <Check className="h-4 w-4 text-green-500" />
+                    <span>Listo</span>
+                </>
+            ) : (
+                <>
+                    <Download className="h-4 w-4" />
+                </>
+            )}
+        </button>
+    );
+}
