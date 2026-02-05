@@ -108,18 +108,40 @@ export function ContentClient({ videos }: ContentClientProps) {
     };
 
     const handleGenerateField = async (field: "title" | "resumen" | "description") => {
-        setGeneratingField(field);
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        if (field === "title") {
-            handleChange("title", "Innovación Agrícola: Técnicas de Futuros Sostenibles");
-        } else if (field === "resumen") {
-            handleChange("resumen", "Descubre cómo la tecnología IoT está transformando el rendimiento de los cultivos en 2024.");
-        } else if (field === "description") {
-            handleChange("description", "En este episodio detallado, nos sumergimos en las métricas de rendimiento y estudios de caso de granjas que han adoptado plenamente la digitalización. Analizamos el ROI de sistemas de riego automatizado...");
+        if (!selectedVideo || !formData.transcription) {
+            alert("Necesitas una transcripción para generar contenido con IA.");
+            return;
         }
 
-        setGeneratingField(null);
+        setGeneratingField(field);
+
+        try {
+            const res = await fetch("/api/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    transcription: formData.transcription,
+                    field,
+                    currentContent: formData[field]
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || "Error al generar contenido");
+            }
+
+            if (data.result) {
+                handleChange(field, data.result);
+            }
+
+        } catch (error: any) {
+            console.error("Error generating content:", error);
+            alert(`Error de IA: ${error.message}`);
+        } finally {
+            setGeneratingField(null);
+        }
     };
 
     const handleSave = async () => {
