@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createProductionClient } from "@/lib/supabase/production-client";
 import { redirect } from "next/navigation";
 import { ContentClient } from "./content-client";
 
@@ -12,10 +13,18 @@ export default async function ContentPage() {
         redirect("/login");
     }
 
+    // Fetch local videos (for "Por subir" / editor)
     const { data: videos } = await supabase
         .from("media")
         .select("*")
         .order("created_at", { ascending: false });
 
-    return <ContentClient videos={videos || []} />;
+    // Fetch production livestreams (for "Publicados")
+    const productionClient = createProductionClient();
+    const { data: pastLivestreams } = await productionClient
+        .from("past_livestreams")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    return <ContentClient videos={videos || []} pastLivestreams={pastLivestreams || []} />;
 }
