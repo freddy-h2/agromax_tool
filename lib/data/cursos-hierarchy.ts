@@ -109,6 +109,11 @@ export async function getCursosHierarchy(): Promise<Community[]> {
     const lessonsByModule: Record<string, Lesson[]> = {};
     // Process lessons sequentially to handle async token signing
     for (const l of lessons) {
+        // Filter: Only show lessons of type 'video'
+        if (l.lesson_type !== 'video') {
+            continue;
+        }
+
         if (!lessonsByModule[l.module_id]) {
             lessonsByModule[l.module_id] = [];
         }
