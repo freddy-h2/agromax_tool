@@ -1,0 +1,170 @@
+--- Verifying Mux Access ---
+Ô£à Automatically connected to Mux. Found 5 assets (showing limit 5).
+
+Sample First Asset FULL JSON:
+{
+  "video_quality": "plus",
+  "tracks": [
+    {
+      "type": "audio",
+      "primary": true,
+      "max_channels": 1,
+      "max_channel_layout": "mono",
+      "id": "1aWFIlhDRmv1vyd02yQs89WmXvhkLOS8iBn4c68Ng3NE"
+    },
+    {
+      "type": "video",
+      "max_width": 1280,
+      "max_height": 720,
+      "max_frame_rate": 30,
+      "id": "00masukhnPYdCqkAoUNG0200T4acAr5ucvGyAIFBGl6kto"
+    }
+  ],
+  "status": "ready",
+  "resolution_tier": "720p",
+  "recording_times": [
+    {
+      "type": "content",
+      "started_at": "2026-01-30T00:56:49.954Z",
+      "duration": 14.933
+    },
+    {
+      "type": "slate",
+      "started_at": "2026-01-30T00:57:04.887Z",
+      "duration": 0.918
+    },
+    {
+      "type": "content",
+      "started_at": "2026-01-30T00:56:50.132Z",
+      "duration": 56.062
+    },
+    {
+      "type": "slate",
+      "started_at": "2026-01-30T00:57:46.194Z",
+      "duration": 1.957
+    },
+    {
+      "type": "content",
+      "started_at": "2026-01-30T00:57:48.151Z",
+      "duration": 2.012
+    },
+    {
+      "type": "slate",
+      "started_at": "2026-01-30T00:57:50.163Z",
+      "duration": 6.095
+    },
+    {
+      "type": "content",
+      "started_at": "2026-01-30T00:57:56.258Z",
+      "duration": 7.039
+    },
+    {
+      "type": "slate",
+      "started_at": "2026-01-30T00:58:03.297Z",
+      "duration": 1.965
+    },
+    {
+      "type": "content",
+      "started_at": "2026-01-30T00:58:05.262Z",
+      "duration": 1.707
+    },
+    {
+      "type": "slate",
+      "started_at": "2026-01-30T00:58:06.969Z",
+      "duration": 0.981
+    },
+    {
+      "type": "content",
+      "started_at": "2026-01-30T00:58:07.950Z",
+      "duration": 0.618
+    },
+    {
+      "type": "slate",
+      "started_at": "2026-01-30T00:58:08.568Z",
+      "duration": -0.004
+    },
+    {
+      "type": "content",
+      "started_at": "2026-01-30T00:58:08.564Z",
+      "duration": 397.125
+    },
+    {
+      "type": "slate",
+      "started_at": "2026-01-30T01:04:45.689Z",
+      "duration": 32
+    },
+    {
+      "type": "content",
+      "started_at": "2026-01-30T01:05:17.689Z",
+      "duration": 17.745
+    },
+    {
+      "type": "slate",
+      "started_at": "2026-01-30T01:05:35.434Z",
+      "duration": 2.862
+    },
+    {
+      "type": "content",
+      "started_at": "2026-01-30T01:05:38.296Z",
+      "duration": 3.046
+    },
+    {
+      "type": "slate",
+      "started_at": "2026-01-30T01:05:41.342Z",
+      "duration": 1.991
+    },
+    {
+      "type": "content",
+      "started_at": "2026-01-30T01:05:43.333Z",
+      "duration": 2389.371
+    },
+    {
+      "type": "slate",
+      "started_at": "2026-01-30T01:45:32.704Z",
+      "duration": 8.967
+    },
+    {
+      "type": "content",
+      "started_at": "2026-01-30T01:45:41.671Z",
+      "duration": 1184.416
+    },
+    {
+      "type": "slate",
+      "started_at": "2026-01-30T02:05:26.087Z",
+      "duration": 42.302
+    }
+  ],
+  "progress": {
+    "state": "completed",
+    "progress": 100
+  },
+  "playback_ids": [
+    {
+      "policy": "public",
+      "id": "yKQ6802xxTO3102gMTHYaKjJfezPd77CHgxyHmywctVtk"
+    }
+  ],
+  "mp4_support": "none",
+  "max_stored_resolution": "HD",
+  "max_stored_frame_rate": 30,
+  "max_resolution_tier": "1080p",
+  "master_access": "temporary",
+  "master": {
+    "url": "https://mezzanine.mux.com/qPz55l7fV013kyXLyGwunvq2woVycSjUv/mezzanine.mp4?skid=default&signature=Njk4NDFiYzlfOTAxMDkzOTllZTcxNTY5ZmYxZGVkNTJhOTRlNTZiMDFiYWY2ZjVjYmQ5MDIwOWI0MjNhODRjYmJiNjZhZDNmMw==",
+    "status": "ready"
+  },
+  "live_stream_id": "4LMW3GfClXWjypZ6akx9CsD5flTCqkZD1e5qd5b2Zfk",
+  "ingest_type": "live_rtmp",
+  "id": "BNqaqyl4edPLEmyegCNfze2BgwQgjijYIYqeaidHDq00",
+  "encoding_tier": "smart",
+  "duration": 4174.108333333334,
+  "created_at": "1769734609",
+  "aspect_ratio": "16:9"
+}
+
+Sample Assets List:
+- ID: BNqaqyl4edPLEmyegCNfze2BgwQgjijYIYqeaidHDq00, Status: ready, Duration: 4174.108333333334s
+- ID: LF98eF5RW01yEc00NcwmLAAQhvw7qUntxw6YXhaDi63rw, Status: ready, Duration: 209.756222s
+- ID: d8Z8QR02h8Betq22cB9UDQ2ABDMi15MPx6XNxvmDCDQE, Status: ready, Duration: 40.013667s
+- ID: 3900ZZq6KH8qn4NUH5zfixwdybvv02NwGI02gdXdx2XN01Y, Status: ready, Duration: 40.013667s
+- ID: DtGE02SJggG7XgBcTnY84lvrPOtoB2EG02BW00S3DVCsqM, Status: ready, Duration: 40.013667s

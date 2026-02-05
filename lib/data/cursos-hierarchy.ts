@@ -6,6 +6,8 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY!;
 const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID!;
 const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET!;
+const MUX_SIGNING_KEY_ID = process.env.MUX_SIGNING_KEY_ID!;
+const MUX_SIGNING_KEY_SECRET = process.env.MUX_SIGNING_KEY_SECRET!;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !MUX_TOKEN_ID || !MUX_TOKEN_SECRET) {
     throw new Error("Missing required environment variables for Supabase or Mux");
@@ -28,6 +30,7 @@ export interface Lesson {
     description: string;
     module_id: string;
     mux_playback_id: string | null;
+    mux_playback_token?: string | null;
     duration_minutes: number;
     lesson_type: string;
     order: number;
@@ -62,16 +65,19 @@ export async function getCursosHierarchy(): Promise<Community[]> {
     console.log("Fetching courses hierarchy...");
 
     // 1. Fetch all data in parallel
+    // Note: We also fetch Mux assets here to map playback_ids, as they might not be in the DB
     const [
         { data: communities, error: errCom },
         { data: courses, error: errCur },
         { data: modules, error: errMod },
-        { data: lessons, error: errLes }
+        { data: lessons, error: errLes },
+        muxAssets // Mux fetch is not a Supabase promise, handled below
     ] = await Promise.all([
         externalSupabase.from("communities").select("*").order("name"),
         externalSupabase.from("courses").select("*").order("title"),
         externalSupabase.from("course_modules").select("*").order("order"),
-        externalSupabase.from("course_lessons").select("*").order("order")
+        externalSupabase.from("course_lessons").select("*").order("order"),
+        mux.video.assets.list({ limit: 100 }) // Fetch top 100 assets. TODO: Implement pagination for scalable solution
     ]);
 
     if (errCom || errCur || errMod || errLes) {
@@ -83,25 +89,75 @@ export async function getCursosHierarchy(): Promise<Community[]> {
         return [];
     }
 
+    // Create a map of Mux Asset ID -> Playback ID
+    // Create a map of Mux Asset ID -> Playback Info (ID & Policy)
+    const muxInfoMap = new Map<string, { playbackId: string, policy: string }>();
+    if (muxAssets && muxAssets.data) {
+        muxAssets.data.forEach(asset => {
+            if (asset.playback_ids && asset.playback_ids.length > 0) {
+                muxInfoMap.set(asset.id, {
+                    playbackId: asset.playback_ids[0].id,
+                    policy: asset.playback_ids[0].policy
+                });
+            }
+        });
+    }
+
     // 2. Build the hierarchy (Lessons -> Modules -> Courses -> Communities)
 
     // Group lessons by module_id
     const lessonsByModule: Record<string, Lesson[]> = {};
-    lessons.forEach((l: any) => {
+    // Process lessons sequentially to handle async token signing
+    for (const l of lessons) {
         if (!lessonsByModule[l.module_id]) {
             lessonsByModule[l.module_id] = [];
         }
+
+        // Determine playback ID: Explicit DB column OR lookup via Mux Asset ID
+        let playbackId = l.mux_playback_id;
+        let token: string | null = null;
+        let policy = 'public';
+
+        if (!playbackId && l.mux_asset_id) {
+            const info = muxInfoMap.get(l.mux_asset_id);
+            if (info) {
+                playbackId = info.playbackId;
+                policy = info.policy;
+            }
+        } else if (playbackId && l.mux_asset_id) {
+            const info = muxInfoMap.get(l.mux_asset_id);
+            if (info) policy = info.policy;
+        }
+
+        // 2. Generate Token if Signed
+        if (playbackId && policy === 'signed') {
+            if (!MUX_SIGNING_KEY_ID || !MUX_SIGNING_KEY_SECRET) {
+                console.error('Missing MUX_SIGNING_KEY_ID or MUX_SIGNING_KEY_SECRET for signed playback');
+            } else {
+                try {
+                    token = await mux.jwt.signPlaybackId(playbackId, {
+                        keyId: MUX_SIGNING_KEY_ID,
+                        keySecret: MUX_SIGNING_KEY_SECRET,
+                        expiration: '24h'
+                    });
+                } catch (e) {
+                    console.error(`Failed to sign token for lesson ${l.id}`, e);
+                }
+            }
+        }
+
         lessonsByModule[l.module_id].push({
             id: l.id,
             title: l.title, // Note: DB uses 'title'
             description: l.description,
             module_id: l.module_id,
-            mux_playback_id: l.mux_playback_id,
+            mux_playback_id: playbackId,
+            mux_playback_token: token,
             duration_minutes: l.duration_minutes,
             lesson_type: l.lesson_type,
             order: l.order,
         });
-    });
+    }
 
     // Group modules by course_id and attach lessons
     const modulesByCourse: Record<string, Module[]> = {};
@@ -189,7 +245,8 @@ export async function getOrphanAssets() {
             status: asset.status,
             created_at: asset.created_at,
             duration: asset.duration,
-            aspect_ratio: asset.aspect_ratio
+            aspect_ratio: asset.aspect_ratio,
+            passthrough: asset.passthrough
         }));
 
     } catch (err) {

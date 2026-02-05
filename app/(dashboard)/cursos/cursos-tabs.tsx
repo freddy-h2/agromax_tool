@@ -125,22 +125,48 @@ export default function CursosTabs({ data: communities, orphanAssets }: CursosTa
                                                                     <TabsContent key={module.id} value={module.id} className="mt-6">
                                                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                                                             {/* Lessons Display */}
-                                                                            {module.lessons.map((lesson) => (
-                                                                                <Card key={lesson.id} className="bg-[#0a0a0a] border-[#333]">
-                                                                                    <CardHeader>
+                                                                            {module.lessons.map((lesson: any) => (
+                                                                                <Card key={lesson.id} className="bg-[#0a0a0a] border-[#333] overflow-hidden">
+                                                                                    <CardHeader className="pb-2">
                                                                                         <CardTitle className="text-white text-base">{lesson.title}</CardTitle>
-                                                                                        <CardDescription className="text-[#666]">
-                                                                                            ID: {lesson.id}
-                                                                                        </CardDescription>
+                                                                                        {lesson.description && (
+                                                                                            <CardDescription className="text-[#888] line-clamp-2">
+                                                                                                {lesson.description}
+                                                                                            </CardDescription>
+                                                                                        )}
                                                                                     </CardHeader>
-                                                                                    <CardContent>
-                                                                                        <div className="p-3 rounded bg-[#111] border border-[#222]">
-                                                                                            <p className="text-xs text-green-400 font-mono">
-                                                                                                Lesson que pertenece a:<br />
-                                                                                                <strong>Módulo:</strong> {module.title}<br />
-                                                                                                <strong>Curso:</strong> {course.title}<br />
-                                                                                                <strong>Comunidad:</strong> {community.name}
-                                                                                            </p>
+                                                                                    <CardContent className="p-0">
+                                                                                        {lesson.mux_playback_id ? (
+                                                                                            <div className="aspect-video w-full bg-black relative group">
+                                                                                                <MuxPlayer
+                                                                                                    streamType="on-demand"
+                                                                                                    playbackId={lesson.mux_playback_id}
+                                                                                                    tokens={{ playback: lesson.mux_playback_token }}
+                                                                                                    metadata={{
+                                                                                                        video_title: lesson.title,
+                                                                                                        video_id: lesson.id,
+                                                                                                        page_type: "course_lesson"
+                                                                                                    }}
+                                                                                                    className="w-full h-full"
+                                                                                                    accentColor="#22c55e"
+                                                                                                />
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <div className="aspect-video w-full bg-[#111] flex items-center justify-center text-[#444]">
+                                                                                                <div className="flex flex-col items-center">
+                                                                                                    <MonitorPlay className="h-8 w-8 mb-2 opacity-50" />
+                                                                                                    <span className="text-xs">Sin video asignado</span>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        )}
+
+                                                                                        <div className="p-4 border-t border-[#222]">
+                                                                                            <div className="p-3 rounded bg-[#111] border border-[#222]">
+                                                                                                <p className="text-xs text-[#666] font-mono mb-1">ID: {lesson.id}</p>
+                                                                                                <p className="text-xs text-green-400 font-mono">
+                                                                                                    {module.title} • {course.title}
+                                                                                                </p>
+                                                                                            </div>
                                                                                         </div>
                                                                                     </CardContent>
                                                                                 </Card>

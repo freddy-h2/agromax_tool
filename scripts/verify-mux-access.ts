@@ -36,9 +36,12 @@ async function run() {
         console.log(`✅ Automatically connected to Mux. Found ${assets.data.length} assets (showing limit 5).`);
 
         if (assets.data.length > 0) {
-            console.log("\nSample Assets:");
+            console.log("\nSample First Asset FULL JSON:");
+            console.log(JSON.stringify(assets.data[0], null, 2));
+
+            console.log("\nSample Assets List:");
             assets.data.forEach(asset => {
-                console.log(`- ID: ${asset.id}, Status: ${asset.status}, Duration: ${asset.duration}s, Created: ${new Date(asset.created_at * 1000).toISOString()}`);
+                console.log(`- ID: ${asset.id}, Status: ${asset.status}, Duration: ${asset.duration}s`);
             });
         }
     } catch (error: any) {
