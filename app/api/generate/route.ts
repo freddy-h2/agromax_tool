@@ -9,6 +9,12 @@ export async function POST(request: NextRequest) {
     try {
         const { transcription, field, currentContent } = await request.json();
 
+        // Use currentContent to refine if provided
+        let contextAddition = "";
+        if (currentContent) {
+            contextAddition = `\n\nContenido actual (para referencia/mejora): "${currentContent.substring(0, 1000)}"`;
+        }
+
         if (!transcription) {
             return NextResponse.json(
                 { error: "Se requiere la transcripción para generar contenido." },
@@ -35,7 +41,8 @@ export async function POST(request: NextRequest) {
                 userPrompt = `Genera 1 opción de título para un video sobre el siguiente tema. El título debe ser llamativo pero profesional.
                 
                 Transcripción del video:
-                "${contentContext}"`;
+                Transcripción del video:
+                "${contentContext}"${contextAddition}`;
                 break;
 
             case "description":
@@ -74,10 +81,11 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ result: generatedText });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("OpenAI Error:", error);
+        const message = error instanceof Error ? error.message : "Unknown error";
         return NextResponse.json(
-            { error: "Error al generar contenido con IA", details: error.message },
+            { error: "Error al generar contenido con IA", details: message },
             { status: 500 }
         );
     }

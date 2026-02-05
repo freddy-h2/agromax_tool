@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { FileText, Wand2, Loader2, Save, Check, Search, BrainCircuit, Calendar, Clock, Timer } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -136,9 +136,10 @@ export function ContentClient({ videos }: ContentClientProps) {
                 handleChange(field, data.result);
             }
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error generating content:", error);
-            alert(`Error de IA: ${error.message}`);
+            const msg = error instanceof Error ? error.message : "Error desconocido";
+            alert(`Error de IA: ${msg}`);
         } finally {
             setGeneratingField(null);
         }
@@ -171,9 +172,10 @@ export function ContentClient({ videos }: ContentClientProps) {
             router.refresh();
 
             setTimeout(() => setSuccess(false), 3000);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error updating video content:", error);
-            alert(`Error al guardar: ${error.message || "Error desconocido"}`);
+            const msg = error instanceof Error ? error.message : "Error desconocido";
+            alert(`Error al guardar: ${msg}`);
         } finally {
             setLoading(false);
         }
