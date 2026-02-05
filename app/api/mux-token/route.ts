@@ -128,21 +128,43 @@ function generateMuxJWT(
 
     // 3 Sign
     try {
-        // Modern approach using crypto.sign (Node 12+)
-        // createPrivateKey verifies the format immediately
+        console.log("[mux-token] Signing with method: createPrivateKey (v3 - multi-format)");
         const privateKey = crypto.createPrivateKey({
             key: privateKeyPem,
-            format: 'pem',
-            type: 'pkcs8' // Mux keys varies, but createPrivateKey is usually smart enough
+            format: 'pem'
         });
-
         const signature = crypto.sign("sha256", Buffer.from(signatureInput), privateKey);
-        const encodedSignature = base64UrlEncodeBuffer(signature);
-        return `${signatureInput}.${encodedSignature}`;
-
+        return `${signatureInput}.${base64UrlEncodeBuffer(signature)}`;
     } catch (error) {
-        console.error("[mux-token] Signing failed. Key preview:", privateKeyPem.substring(0, 50) + "...");
-        throw new Error(`Failed to sign JWT: ${(error as any).message}`);
+        console.warn("[mux-token] First signing attempt failed. Trying alternate headers...");
+
+        // Strategy B: Force PKCS#8 header
+        try {
+            const body = cleanSecret.replace(/[\n\r]/g, "");
+            const chunkedBody = body.match(/.{1,64}/g)?.join("\n");
+            const pkcs8Key = `-----BEGIN PRIVATE KEY-----\n${chunkedBody}\n-----END PRIVATE KEY-----`;
+
+            const privateKey = crypto.createPrivateKey({ key: pkcs8Key, format: 'pem' });
+            const signature = crypto.sign("sha256", Buffer.from(signatureInput), privateKey);
+            return `${signatureInput}.${base64UrlEncodeBuffer(signature)}`;
+        } catch (_) {
+            console.warn("[mux-token] PKCS#8 attempt failed. Trying PKCS#1...");
+
+            // Strategy C: Force PKCS#1 header
+            try {
+                const body = cleanSecret.replace(/[\n\r]/g, "");
+                const chunkedBody = body.match(/.{1,64}/g)?.join("\n");
+                const pkcs1Key = `-----BEGIN RSA PRIVATE KEY-----\n${chunkedBody}\n-----END RSA PRIVATE KEY-----`;
+
+                const privateKey = crypto.createPrivateKey({ key: pkcs1Key, format: 'pem' });
+                const signature = crypto.sign("sha256", Buffer.from(signatureInput), privateKey);
+                return `${signatureInput}.${base64UrlEncodeBuffer(signature)}`;
+            } catch (finalError) {
+                console.error("[mux-token] All signing attempts failed.");
+                console.error("Original Error:", (error as Error).message);
+                throw new Error(`Failed to sign JWT with any key format. Check your MUX_SIGNING_KEY_SECRET.`);
+            }
+        }
     }
 }
 
