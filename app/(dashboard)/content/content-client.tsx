@@ -324,7 +324,7 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                             {pastLivestreams && pastLivestreams.length > 0 ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                     {pastLivestreams.map((stream) => (
-                                        <Card key={stream.id} className="overflow-hidden border-border/20 bg-card hover:bg-card/80 transition-all group">
+                                        <Card key={stream.id} className="overflow-hidden border-border/20 bg-card hover:bg-card/80 transition-all group max-w-sm mx-auto w-full flex flex-col">
                                             <div className="aspect-video relative bg-black/50 overflow-hidden">
                                                 {/* Thumbnail from Mux */}
                                                 <div
@@ -332,13 +332,13 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                                                     onClick={() => handlePlayVideo(stream)}
                                                 >
                                                     <img
-                                                        src={`https://image.mux.com/${stream.mux_playback_id?.trim()}/thumbnail.png?width=400&height=225&fit_mode=smart`}
+                                                        src={`https://image.mux.com/${stream.mux_playback_id?.trim()}/thumbnail.jpg`}
                                                         alt={stream.title || "Livestream"}
                                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                         loading="lazy"
                                                         onError={(e) => {
                                                             e.currentTarget.style.display = 'none';
-                                                            e.currentTarget.parentElement?.parentElement?.querySelector('.fallback-placeholder')?.classList.remove('hidden');
+                                                            e.currentTarget.parentElement?.querySelector('.fallback-placeholder')?.classList.remove('hidden');
                                                         }}
                                                     />
                                                     {/* Fallback Placeholder */}
@@ -348,7 +348,7 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
                                                 <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-[10px] text-white font-mono backdrop-blur-sm">
                                                     VOD
                                                 </div>
@@ -365,6 +365,29 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                                                     })}
                                                 </p>
                                             </CardContent>
+                                            <div className="flex items-center gap-2 p-4 pt-0 mt-auto">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="flex-1 text-xs h-8 bg-transparent border-white/10 hover:bg-white/5"
+                                                    onClick={() => handleSelectVideo(stream)}
+                                                >
+                                                    <Eye className="h-3 w-3 mr-2" />
+                                                    Ver Contenido
+                                                </Button>
+
+                                                {/* Note: PastLivestreams might not have a direct URL, treating as disabled if missing */}
+                                                {/* If we want to support downloads for livestreams, we need to map the download URL if available */}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 hover:bg-white/5 hover:text-neon-blue"
+                                                    disabled
+                                                    title="Descarga no disponible"
+                                                >
+                                                    <Download className="h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </div>
                                         </Card>
                                     ))}
                                 </div>
@@ -399,7 +422,7 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                                                 {video.mux_playback_id ? (
                                                     <>
                                                         <img
-                                                            src={`https://image.mux.com/${video.mux_playback_id?.trim()}/thumbnail.png?width=400&height=225&fit_mode=smart`}
+                                                            src={`https://image.mux.com/${video.mux_playback_id?.trim()}/thumbnail.jpg`}
                                                             alt={video.title}
                                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                             loading="lazy"
@@ -497,10 +520,10 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                 <TabsContent value="cursos" className="h-full">
                     <ProductionPanel />
                 </TabsContent>
-            </Tabs>
+            </Tabs >
 
             {/* Detail Modal */}
-            <Modal
+            < Modal
                 isOpen={isDetailOpen}
                 onClose={handleCloseModal}
                 title={isEditing ? "Editando Contenido" : selectedVideo?.title || "Detalle del Video"}
@@ -800,11 +823,12 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                             </div>
                         )}
                     </div>
-                )}
-            </Modal>
+                )
+                }
+            </Modal >
 
             {/* Video Player Only Modal */}
-            <Modal
+            < Modal
                 isOpen={isVideoPlayerOpen}
                 onClose={handleCloseModal}
                 title={selectedVideo?.title || "Reproductor"}
@@ -824,7 +848,7 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                         />
                     </div>
                 )}
-            </Modal>
+            </Modal >
         </div >
     );
 }
