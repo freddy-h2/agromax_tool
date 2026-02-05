@@ -5,9 +5,11 @@ import { Download, Loader2, Check } from "lucide-react";
 
 interface DownloadButtonProps {
     videoId: string;
+    minimal?: boolean;
+    className?: string;
 }
 
-export function DownloadButton({ videoId }: DownloadButtonProps) {
+export function DownloadButton({ videoId, minimal = false, className = "" }: DownloadButtonProps) {
     const [status, setStatus] = useState<"idle" | "processing" | "ready" | "error">("idle");
     const [loading, setLoading] = useState(false);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -71,28 +73,40 @@ export function DownloadButton({ videoId }: DownloadButtonProps) {
         <button
             onClick={handleDownload}
             disabled={loading}
-            className={`p-2 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium
+            className={`transition-colors flex items-center justify-center gap-2 font-medium
+                ${minimal ? "h-8 w-8 rounded-md p-0" : "p-2 rounded-lg text-sm"}
                 ${loading
                     ? "text-neon-purple bg-neon-purple/10 cursor-not-allowed"
-                    : "text-foreground-muted hover:text-foreground hover:bg-white/5"
-                }`}
+                    : "text-foreground-muted hover:text-neon-blue hover:bg-white/5"
+                } ${className}`}
             title="Descargar Video (Master)"
         >
             {loading ? (
-                <>
+                minimal ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Preparando...</span>
-                </>
+                ) : (
+                    <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Preparando...</span>
+                    </>
+                )
             ) : status === "ready" ? (
-                <>
+                minimal ? (
                     <Check className="h-4 w-4 text-green-500" />
-                    <span>Listo</span>
-                </>
+                ) : (
+                    <>
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>Listo</span>
+                    </>
+                )
             ) : (
-                <>
+                minimal ? (
                     <Download className="h-4 w-4" />
-                </>
+                ) : (
+                    <Download className="h-4 w-4" />
+                )
             )}
         </button>
     );
 }
+

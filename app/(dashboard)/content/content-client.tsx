@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Wand2, Loader2, Save, Check, Search, BrainCircuit, Calendar, Clock, Timer } from "lucide-react";
+import {
+    FileText, Wand2, Loader2, Save, Check, Search, BrainCircuit, Calendar, Clock, Timer,
+    Plus, Eye, Video as VideoIcon, Play, Settings, AlertTriangle, Download, Edit, X
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,13 +16,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { ProductionPanel } from "./production-panel";
-import { Eye, Download, Edit, X, Play, Video as VideoIcon } from "lucide-react";
 import MuxPlayer from "@mux/mux-player-react";
+import { DownloadButton } from "@/components/download-button";
+import { cn } from "@/lib/utils";
 import { AdminList } from "../admin/admin-list";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Settings, AlertTriangle } from "lucide-react";
 
 // Schema Configuration for Manual Import
 const manualImportSchema = z.object({
@@ -51,6 +54,7 @@ interface Video {
     created_at: string;
     url?: string; // Added for download support
     mux_playback_id?: string | null;
+    live_stream_config_id?: string; // Optional field for detailed copy
 }
 
 // PastLivestream is significantly simpler, but we can map it to Video or just use Video with optional fields
@@ -76,10 +80,18 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
     const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false); // New state for video-only player
     const [isManualImportOpen, setIsManualImportOpen] = useState(false); // New state for manual import modal
     const [isEditing, setIsEditing] = useState(false);
+    const [activeSubTab, setActiveSubTab] = useState("published");
 
     // Editor State
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+
+    // Confirmation Modal State
+    const [confirmAction, setConfirmAction] = useState<{
+        isOpen: boolean;
+        type: "publish" | "unpublish";
+        video: Video | PastLivestream | null;
+    }>({ isOpen: false, type: "publish", video: null });
 
     // AI State
     const [generatingTranscription, setGeneratingTranscription] = useState(false);
@@ -138,6 +150,54 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
 
     const supabase = createClient();
     const router = useRouter();
+
+    // Publish / Unpublish Handlers
+    const handleConfirmAction = async () => {
+        if (!confirmAction.video) return;
+
+        setLoading(true);
+        try {
+            if (confirmAction.type === "publish") {
+                // Publish: Insert into past_livestreams
+                const video = confirmAction.video as Video;
+                const { error } = await supabase
+                    .from("past_livestreams")
+                    .insert([{
+                        title: video.title,
+                        description: video.description,
+                        mux_playback_id: video.mux_playback_id,
+                        live_date: video.live_date,
+                        duration_minutes: video.duration_minutes,
+                        live_stream_config_id: video.live_stream_config_id,
+                        resumen: video.resumen,
+                        created_at: video.created_at, // Copy original creation date as requested
+                    }]);
+
+                if (error) throw error;
+            } else {
+                // Unpublish: Delete from past_livestreams
+                const { error } = await supabase
+                    .from("past_livestreams")
+                    .delete()
+                    .eq("id", confirmAction.video.id);
+
+                if (error) throw error;
+            }
+
+            setConfirmAction({ isOpen: false, type: "publish", video: null });
+            router.refresh();
+        } catch (error) {
+            console.error("Error executing action:", error);
+            // Enhanced error logging
+            if (typeof error === 'object' && error !== null) {
+                console.error("Full error object:", JSON.stringify(error, null, 2));
+            }
+            alert(`Error al ejecutar la acción: ${error instanceof Error ? error.message : "Detalles en consola"}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
     const handleSelectVideo = (video: Video | PastLivestream) => {
         // Cast to Video for internal state, ensuring defaults for missing fields
@@ -302,6 +362,20 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
             if (error) throw error;
 
             setSuccess(true);
+
+            // Update local state to reflect changes immediately
+            if (selectedVideo) {
+                setSelectedVideo({
+                    ...selectedVideo,
+                    title: formData.title,
+                    description: formData.description,
+                    resumen: formData.resumen,
+                    transcription: formData.transcription,
+                    live_date: combinedDate,
+                    duration_minutes: formData.duration_minutes ? parseInt(formData.duration_minutes) : 0,
+                });
+            }
+
             router.refresh();
 
             // Switch back to view mode on success
@@ -363,25 +437,39 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                 </TabsList>
 
                 <TabsContent value="lives" className="flex-1 mt-0 h-full flex flex-col overflow-hidden">
-                    <Tabs defaultValue="published" className="flex flex-col h-full w-full">
+                    <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="flex flex-col h-full w-full">
                         <div className="border-b border-white/10 mb-4 shrink-0 flex items-center justify-between">
                             <TabsList className="w-auto justify-start bg-transparent p-0 gap-6 h-auto">
                                 <TabsTrigger
                                     value="published"
-                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-green-500 data-[state=active]:text-green-500 bg-transparent px-2 py-3 text-foreground/60 hover:text-foreground/80 transition-colors"
+                                    className="relative rounded-t-lg bg-transparent px-6 py-3 text-foreground/60 hover:text-foreground/80 hover:bg-white/5 transition-all w-[160px]"
                                 >
-                                    <span className="flex items-center gap-2">
-                                        <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                                    {activeSubTab === "published" && (
+                                        <motion.div
+                                            layoutId="activeTabIndicator"
+                                            className="absolute inset-0 rounded-t-lg bg-green-500/20 border-b-2 border-green-500 shadow-[inset_0_-1px_10px_rgba(34,197,94,0.2)]"
+                                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                                        />
+                                    )}
+                                    <span className={`relative z-10 flex items-center gap-2 justify-center ${activeSubTab === "published" ? "text-green-400 font-bold" : ""}`}>
+                                        <div className={`h-2 w-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)] transition-opacity duration-300 ${activeSubTab === "published" ? "opacity-100" : "opacity-50"}`} />
                                         Publicados
                                     </span>
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="pending"
-                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-yellow-500 data-[state=active]:text-yellow-500 bg-transparent px-2 py-3 text-foreground/60 hover:text-foreground/80 transition-colors"
+                                    className="relative rounded-t-lg bg-transparent px-6 py-3 text-foreground/60 hover:text-foreground/80 hover:bg-white/5 transition-all w-[160px]"
                                 >
-                                    <span className="flex items-center gap-2">
-                                        <div className="h-2 w-2 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
-                                        Por subir
+                                    {activeSubTab === "pending" && (
+                                        <motion.div
+                                            layoutId="activeTabIndicator"
+                                            className="absolute inset-0 rounded-t-lg bg-yellow-500/20 border-b-2 border-yellow-500 shadow-[inset_0_-1px_10px_rgba(234,179,8,0.2)]"
+                                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                                        />
+                                    )}
+                                    <span className={`relative z-10 flex items-center gap-2 justify-center ${activeSubTab === "pending" ? "text-yellow-400 font-bold" : ""}`}>
+                                        <div className={`h-2 w-2 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)] transition-opacity duration-300 ${activeSubTab === "pending" ? "opacity-100" : "opacity-50"}`} />
+                                        Sin publicar
                                     </span>
                                 </TabsTrigger>
                             </TabsList>
@@ -442,20 +530,23 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                                                     onClick={() => handleSelectVideo(stream)}
                                                 >
                                                     <Eye className="h-3 w-3 mr-2" />
-                                                    Ver Contenido
+                                                    Ver
+                                                </Button>
+
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 px-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                                    onClick={() => setConfirmAction({ isOpen: true, type: "unpublish", video: stream })}
+                                                    title="Quitar publicación"
+                                                >
+                                                    Quitar
                                                 </Button>
 
                                                 {/* Note: PastLivestreams might not have a direct URL, treating as disabled if missing */}
-                                                {/* If we want to support downloads for livestreams, we need to map the download URL if available */}
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 hover:bg-white/5 hover:text-neon-blue"
-                                                    disabled
-                                                    title="Descarga no disponible"
-                                                >
-                                                    <Download className="h-4 w-4 opacity-50" />
-                                                </Button>
+                                                <div className="h-8 w-8 flex items-center justify-center">
+                                                    <DownloadButton videoId={stream.id} minimal className="hover:bg-white/5 hover:text-neon-blue rounded-md" />
+                                                </div>
                                             </div>
                                         </Card>
                                     ))}
@@ -555,31 +646,22 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                                                         onClick={() => handleSelectVideo(video)}
                                                     >
                                                         <Eye className="h-3 w-3 mr-2" />
-                                                        Ver Contenido
+                                                        Ver
                                                     </Button>
 
-                                                    {video.url ? (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 hover:bg-white/5 hover:text-neon-blue"
-                                                            asChild
-                                                        >
-                                                            <a href={video.url} download target="_blank" rel="noopener noreferrer">
-                                                                <Download className="h-4 w-4" />
-                                                            </a>
-                                                        </Button>
-                                                    ) : (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 hover:bg-white/5 hover:text-neon-blue"
-                                                            disabled
-                                                            title="Descarga no disponible"
-                                                        >
-                                                            <Download className="h-4 w-4 opacity-50" />
-                                                        </Button>
-                                                    )}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 px-2 text-xs text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                                        onClick={() => setConfirmAction({ isOpen: true, type: "publish", video: video })}
+                                                        title="Publicar video"
+                                                    >
+                                                        Publicar
+                                                    </Button>
+
+                                                    <div className="h-8 w-8 flex items-center justify-center">
+                                                        <DownloadButton videoId={video.id} minimal className="hover:bg-white/5 hover:text-neon-blue rounded-md" />
+                                                    </div>
                                                 </div>
                                             </CardContent>
                                         </Card>
@@ -587,7 +669,7 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
 
                                     {filteredVideos.length === 0 && (
                                         <div className="col-span-full py-12 text-center border border-dashed border-border/30 rounded-xl bg-card/30">
-                                            <p className="text-foreground-muted text-sm">No se encontraron videos pendientes por subir.</p>
+                                            <p className="text-foreground-muted text-sm">No se encontraron videos sin publicar.</p>
                                         </div>
                                     )}
                                 </div>
@@ -1064,6 +1146,43 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                                 <AdminList videos={videos as any[]} />
                             </div>
                         </div>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Confirmation Modal */}
+            <Modal
+                isOpen={confirmAction.isOpen}
+                onClose={() => setConfirmAction({ ...confirmAction, isOpen: false })}
+                title={confirmAction.type === "publish" ? "Publicar Video" : "Quitar Publicación"}
+                className="max-w-md"
+            >
+                <div className="space-y-4">
+                    <p className="text-foreground-muted">
+                        {confirmAction.type === "publish"
+                            ? "¿Estás seguro de que deseas publicar este video? Aparecerá en la sección de 'Publicados'."
+                            : "¿Estás seguro de que deseas quitar esta publicación? Se eliminará de la lista de 'Publicados'."
+                        }
+                    </p>
+                    <div className="p-4 bg-card border border-border/40 rounded-lg">
+                        <p className="font-medium text-foreground">{confirmAction.video?.title || "Sin título"}</p>
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setConfirmAction({ ...confirmAction, isOpen: false })}
+                            disabled={loading}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleConfirmAction}
+                            className={confirmAction.type === "publish" ? "bg-green-500 hover:bg-green-600 text-white" : "bg-red-500 hover:bg-red-600 text-white"}
+                            disabled={loading}
+                        >
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            {confirmAction.type === "publish" ? "Confirmar Publicación" : "Eliminar Publicación"}
+                        </Button>
                     </div>
                 </div>
             </Modal>
