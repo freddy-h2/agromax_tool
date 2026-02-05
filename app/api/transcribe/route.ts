@@ -105,10 +105,13 @@ export async function POST(request: NextRequest) {
             .eq("id", videoId);
 
         if (updateError) {
-            return NextResponse.json(
-                { error: "Error al guardar la transcripción", transcription },
-                { status: 500 }
-            );
+            console.error(`[transcribe] DB Update Error for ${table} / ${videoId}:`, updateError);
+            // Return success anyway so client can proceed with the transcription we have
+            return NextResponse.json({
+                success: true,
+                warning: "Transcripción generada pero no se pudo guardar en base de datos.",
+                transcription
+            });
         }
 
         return NextResponse.json({ transcription, success: true });

@@ -270,25 +270,36 @@ export function ProductionPanel() {
             }
 
             const { transcription } = await transcribeRes.json();
+            console.log("Transcription result:", transcription);
 
-            // 2. Generar Resumen IA
-            const generateRes = await fetch("/api/generate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    transcription,
-                    field: "resumen",
-                }),
-            });
+            let resumen = "No se pudo generar resumen (sin transcripción).";
 
-            if (!generateRes.ok) {
-                const data = await generateRes.json();
-                throw new Error(data.error || "Error al generar resumen");
+            if (transcription && transcription.length > 0) {
+                // 2. Generar Resumen IA solo si hay transcripción
+                try {
+                    const generateRes = await fetch("/api/generate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            transcription,
+                            field: "resumen",
+                        }),
+                    });
+
+                    if (generateRes.ok) {
+                        const data = await generateRes.json();
+                        if (data.result) resumen = data.result;
+                    } else {
+                        console.warn("Generate summary failed, using default.");
+                    }
+                } catch (e) {
+                    console.error("Error generating summary:", e);
+                }
+            } else {
+                console.warn("Transcription is empty, skipping AI summary.");
             }
 
-            const { result: resumen } = await generateRes.json();
-
-            // 3. Generar archivo de texto y descargar
+            // 3. Generar archivo de texto y GUARDAR LOCALMENTE
             const communityName = lesson.course_modules?.courses?.communities?.name || "Sin comunidad";
             const courseTitle = lesson.course_modules?.courses?.title || "Sin curso";
             const moduleTitle = lesson.course_modules?.title || "Sin módulo";
@@ -313,18 +324,23 @@ ${resumen}
 
 TRANSCRIPCIÓN COMPLETA
 ----------------------------------------
-${transcription}
+${transcription || "(Sin transcripción disponible)"}
 `;
 
-            const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${lesson.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_data.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // Call API to save file locally
+            const filename = `${lesson.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_data.txt`;
+
+            const saveRes = await fetch("/api/save-file", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ filename, content: fileContent }),
+            });
+
+            if (!saveRes.ok) {
+                throw new Error("Error al guardar el archivo en el servidor");
+            }
+
+            console.log("File saved successfully on server.");
 
         } catch (err) {
             console.error("Error processing video:", err);
