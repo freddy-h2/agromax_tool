@@ -49,3 +49,5 @@ __pycache__/
 !whisper-service/*.py
 *.csv
 *.csv#
+
+public/downloads

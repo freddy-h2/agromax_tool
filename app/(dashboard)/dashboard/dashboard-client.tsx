@@ -70,7 +70,7 @@ export default function DashboardClient({ userEmail, videos }: DashboardClientPr
                                     alt={video.title}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     onError={(e) => {
-                                        console.error("Image load error:", e.currentTarget.src);
+                                        // Hide broken image and show placeholder without logging error to avoid overlay
                                         e.currentTarget.style.display = 'none';
                                         e.currentTarget.parentElement?.querySelector('.fallback-placeholder')?.classList.remove('hidden');
                                     }}
