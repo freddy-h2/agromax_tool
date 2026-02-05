@@ -1,17 +1,25 @@
 import { createClient } from "@supabase/supabase-js";
+import Mux from "@mux/mux-node";
 
 // Initialize Supabase Client for the External Project (Server-Side Only)
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY!;
+const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID!;
+const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET!;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    throw new Error("Missing VITE_SUPABASE_URL or PRODUCTION_SUPABASE_SERVICE_ROLE_KEY");
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !MUX_TOKEN_ID || !MUX_TOKEN_SECRET) {
+    throw new Error("Missing required environment variables for Supabase or Mux");
 }
 
 const externalSupabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
     auth: {
         persistSession: false,
     },
+});
+
+const mux = new Mux({
+    tokenId: MUX_TOKEN_ID,
+    tokenSecret: MUX_TOKEN_SECRET
 });
 
 export interface Lesson {
@@ -137,4 +145,55 @@ export async function getCursosHierarchy(): Promise<Community[]> {
 
     // Filter out empty communities if needed, or keeping them (user request implies showing all communities)
     return hierarchy;
+}
+
+export async function getOrphanAssets() {
+    console.log("Fetching orphan assets...");
+
+    // 1. Fetch all used mux_asset_ids from Supabase (Read-Only)
+    const { data: lessons, error } = await externalSupabase
+        .from("course_lessons")
+        .select("mux_asset_id")
+        .not("mux_asset_id", "is", null);
+
+    if (error) {
+        console.error("Error fetching course_lessons:", error);
+        return [];
+    }
+
+    const usedAssetIds = new Set(lessons.map((l: any) => l.mux_asset_id));
+
+    // 2. Fetch all assets from Mux
+    // Note: Mux list API is paginated. For now fetching first page/limit. 
+    // In production you might want to paginate through all.
+    try {
+        const { data: muxAssets } = await mux.video.assets.list({ limit: 100 });
+
+        console.log(`[DEBUG] Found ${lessons.length} linked assets in Supabase.`);
+        console.log(`[DEBUG] Found ${muxAssets.length} total assets in Mux.`);
+
+        // 3. Filter assets that are NOT in usedAssetIds
+        const orphanAssets = muxAssets.filter(asset => !usedAssetIds.has(asset.id));
+
+        console.log(`[DEBUG] Identified ${orphanAssets.length} orphan assets.`);
+        if (orphanAssets.length > 0) {
+            console.log(`[DEBUG] Sample orphan ID: ${orphanAssets[0].id}`);
+        } else if (muxAssets.length > 0) {
+            console.log(`[DEBUG] First Mux Asset ID: ${muxAssets[0].id}`);
+            console.log(`[DEBUG] Is it in Supabase? ${usedAssetIds.has(muxAssets[0].id)}`);
+        }
+
+        return orphanAssets.map(asset => ({
+            id: asset.id,
+            playback_id: asset.playback_ids?.[0]?.id,
+            status: asset.status,
+            created_at: asset.created_at,
+            duration: asset.duration,
+            aspect_ratio: asset.aspect_ratio
+        }));
+
+    } catch (err) {
+        console.error("Error fetching Mux assets:", err);
+        return [];
+    }
 }
