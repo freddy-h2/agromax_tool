@@ -35,6 +35,11 @@ const menuItems = [
         href: "/cursos",
         icon: BookOpen,
     },
+    {
+        name: "Subir Video",
+        href: "/upload-video",
+        icon: Upload,
+    },
 ];
 
 interface SidebarProps {
