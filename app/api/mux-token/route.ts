@@ -96,33 +96,54 @@ function generateMuxJWT(
     const encodedPayload = base64UrlEncode(JSON.stringify(payload));
     const signatureInput = `${encodedHeader}.${encodedPayload}`;
 
-    // Decode the private key from base64
-    // El secret puede venir con comillas y estar en base64
-    let cleanSecret = keySecretBase64.replace(/^["']|["']$/g, "").trim();
-    
-    // Decodificar de base64 a PEM
+    // 1 Clean the input
+    const cleanSecret = keySecretBase64.replace(/^["']|["']$/g, "").trim();
+
+    // 2 Resolve valid PEM
     let privateKeyPem: string;
+
+    // Check if it's already a PEM string (Has headers)
+    if (cleanSecret.includes("-----BEGIN")) {
+        console.log("[mux-token] Key appears to be raw PEM");
+        privateKeyPem = cleanSecret.replace(/\\n/g, "\n");
+    } else {
+        // Assume it's Base64 encoded (Standard Mux format)
+        try {
+            const decoded = Buffer.from(cleanSecret, "base64").toString("utf8");
+            if (decoded.includes("-----BEGIN")) {
+                console.log("[mux-token] Key appears to be Base64 encoded PEM");
+                privateKeyPem = decoded.replace(/\\n/g, "\n");
+            } else {
+                console.warn("[mux-token] Decoded base64 does not contain PEM headers. Trying manual reconstruction.");
+                // If standard structure is lost, try to force it as a specific key type
+                // Usually Mux uses RSA Private Keys
+                privateKeyPem = `-----BEGIN RSA PRIVATE KEY-----\n${cleanSecret}\n-----END RSA PRIVATE KEY-----`;
+            }
+        } catch (e) {
+            console.error("[mux-token] Base64 decode failed:", e);
+            // Fallback to wrapping the raw secret
+            privateKeyPem = `-----BEGIN RSA PRIVATE KEY-----\n${cleanSecret}\n-----END RSA PRIVATE KEY-----`;
+        }
+    }
+
+    // 3 Sign
     try {
-        privateKeyPem = Buffer.from(cleanSecret, "base64").toString("utf8");
-    } catch {
-        // Si ya es PEM directamente
-        privateKeyPem = cleanSecret;
+        // Modern approach using crypto.sign (Node 12+)
+        // createPrivateKey verifies the format immediately
+        const privateKey = crypto.createPrivateKey({
+            key: privateKeyPem,
+            format: 'pem',
+            type: 'pkcs8' // Mux keys varies, but createPrivateKey is usually smart enough
+        });
+
+        const signature = crypto.sign("sha256", Buffer.from(signatureInput), privateKey);
+        const encodedSignature = base64UrlEncodeBuffer(signature);
+        return `${signatureInput}.${encodedSignature}`;
+
+    } catch (error) {
+        console.error("[mux-token] Signing failed. Key preview:", privateKeyPem.substring(0, 50) + "...");
+        throw new Error(`Failed to sign JWT: ${(error as any).message}`);
     }
-
-    // Si no tiene los headers PEM, puede que ya esté en formato correcto
-    if (!privateKeyPem.includes("-----BEGIN")) {
-        // Intentar como clave cruda (poco probable)
-        privateKeyPem = `-----BEGIN RSA PRIVATE KEY-----\n${cleanSecret}\n-----END RSA PRIVATE KEY-----`;
-    }
-
-    // Sign with RS256
-    const sign = crypto.createSign("RSA-SHA256");
-    sign.update(signatureInput);
-    sign.end();
-    const signature = sign.sign(privateKeyPem);
-    const encodedSignature = base64UrlEncodeBuffer(signature);
-
-    return `${signatureInput}.${encodedSignature}`;
 }
 
 /**

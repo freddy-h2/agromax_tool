@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
         const { data, error } = await supabase
             .from("video_processing_results")
-            .insert({
+            .upsert({
                 video_id,
                 video_title,
                 video_description,
@@ -35,8 +35,10 @@ export async function POST(request: NextRequest) {
                 course_title,
                 module_title,
                 ai_summary: ai_summary || null, // Ensure null if empty/undefined
-                transcription
-            })
+                transcription,
+                // Validamos si queremos actualizar el timestamp
+                created_at: new Date().toISOString()
+            }, { onConflict: 'video_id' })
             .select()
             .single();
 

@@ -16,7 +16,6 @@ import {
     Play,
     ImageOff,
     Sparkles,
-    Download,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -131,6 +130,14 @@ function VideoCard({
     const [processing, setProcessing] = useState(false);
     const [success, setSuccess] = useState(false);
 
+    // Ya no es necesario el casting manual porque actualizamos el tipo ProductionLessonRow
+    const procStatus = lesson.processing_status || "red";
+    // Si TS se queja, es porque el tipo no se actualizó en el frontend import.
+    // Usaremos casting seguro si es necesario, pero intentemos acceso directo primero.
+    const totalCount = lesson.total_fields_count || 12;
+    const filledCount = lesson.filled_fields_count || 0;
+    const missingFields = lesson.missing_fields || [];
+
     const handleProcessClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (processing) return;
@@ -138,6 +145,7 @@ function VideoCard({
         try {
             await onProcess(lesson);
             setSuccess(true);
+            // Mantener el estado de éxito un momento, luego se actualizará la lista al recargar
             setTimeout(() => setSuccess(false), 3000);
         } catch (error) {
             console.error(error);
@@ -166,8 +174,9 @@ function VideoCard({
                         {lesson.description}
                     </p>
                 )}
-                <div className="flex items-center justify-between gap-2 mt-2">
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 mt-2">
+                    {/* Status Mux */}
+                    <div className="flex items-center justify-between">
                         <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isReady ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
                                 }`}
@@ -175,12 +184,46 @@ function VideoCard({
                             {isReady ? <CheckCircle2 className="h-3 w-3" /> : <Layers className="h-3 w-3" />}
                             {status}
                         </span>
+                        {lesson.duration_minutes != null && (
+                            <span className="text-[10px] text-foreground-muted flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {lesson.duration_minutes}m
+                            </span>
+                        )}
+                    </div>
 
+                    {/* Status Processing (Red/Yellow/Green) */}
+                    <div className="flex items-center justify-between gap-1 pt-1 border-t border-white/5">
+                        <div className="flex items-center gap-2">
+                            {procStatus === "green" && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    Completado
+                                </span>
+                            )}
+                            {procStatus === "yellow" && (
+                                <span
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20 cursor-help"
+                                    title={`Faltan: ${missingFields.join(", ")}`}
+                                >
+                                    <AlertCircle className="h-3 w-3" />
+                                    {filledCount}/{totalCount} Campos
+                                </span>
+                            )}
+                            {procStatus === "red" && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-500/5 text-red-500 border border-red-500/10 opacity-70">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Sin procesar
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Procesar Button */}
                         {isReady && (
                             <button
                                 onClick={handleProcessClick}
                                 disabled={processing}
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${success
+                                className={`ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${success
                                     ? "bg-green-500/20 text-green-400 border border-green-500/30"
                                     : "bg-neon-blue/10 text-neon-blue border border-neon-blue/30 hover:bg-neon-blue/20"
                                     }`}
@@ -188,21 +231,14 @@ function VideoCard({
                                 {processing ? (
                                     <Loader2 className="h-3 w-3 animate-spin" />
                                 ) : success ? (
-                                    <Download className="h-3 w-3" />
+                                    <CheckCircle2 className="h-3 w-3" />
                                 ) : (
                                     <Sparkles className="h-3 w-3" />
                                 )}
-                                {processing ? "Procesando..." : success ? "Descargado" : "Procesar"}
+                                {processing ? "..." : success ? "Listo" : "Procesar"}
                             </button>
                         )}
                     </div>
-
-                    {lesson.duration_minutes != null && (
-                        <span className="text-[10px] text-foreground-muted flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {lesson.duration_minutes}m
-                        </span>
-                    )}
                 </div>
             </div>
         </motion.div>
@@ -288,9 +324,15 @@ export function ProductionPanel() {
 
                     if (generateRes.ok) {
                         const data = await generateRes.json();
-                        if (data.result) resumen = data.result;
+                        if (data.result) {
+                            resumen = data.result;
+                        } else {
+                            console.warn("Generate summary returned empty result.");
+                        }
                     } else {
-                        console.warn("Generate summary failed.");
+                        const errData = await generateRes.json().catch(() => ({}));
+                        console.error("Generate summary failed:", errData);
+                        alert("Advertencia: No se pudo generar el resumen IA. " + (errData.error || generateRes.statusText));
                     }
                 } catch (e) {
                     console.error("Error generating summary:", e);
@@ -328,6 +370,9 @@ export function ProductionPanel() {
                 throw new Error("Error al guardar en base de datos: " + (errData.error || saveRes.statusText));
             }
             console.log("Data processed and saved to DB successfully.");
+
+            // Recargar lecciones para actualizar el status
+            await fetchLessons(false);
 
         } catch (err) {
             console.error("Error processing video:", err);

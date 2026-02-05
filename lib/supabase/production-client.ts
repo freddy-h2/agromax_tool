@@ -26,5 +26,12 @@ export function createProductionClient() {
         );
     }
 
+    // Debug log to confirm which key is being used
+    if (serviceRoleKey) {
+        console.log("[production-client] Using Service Role Key (Admin)");
+    } else {
+        console.log("[production-client] Using Anon Key (Public) - RLS applies");
+    }
+
     return createClient(url, key);
 }

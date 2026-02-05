@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createProductionClient } from "@/lib/supabase/production-client";
+import { createClient } from "@/lib/supabase/server";
+
+export const dynamic = 'force-dynamic';
 
 export type ProductionLessonRow = {
     id: string;
@@ -14,6 +17,12 @@ export type ProductionLessonRow = {
     mux_playback_id: string | null;
     mux_asset_status: string | null;
     created_at: string;
+    // New fields for processing status
+    processing_status?: "red" | "yellow" | "green";
+    missing_fields_count?: number;
+    filled_fields_count?: number;
+    total_fields_count?: number;
+    missing_fields?: string[];
     course_modules: {
         id: string;
         course_id: string;
@@ -38,10 +47,11 @@ export async function GET(request: Request) {
     const debug: Record<string, unknown> = {};
 
     try {
-        const supabase = createProductionClient();
+        const supabaseProd = createProductionClient();
+        const supabaseLocal = await createClient();
 
         // 1. Lecciones de video con Mux configurado
-        const { data: lessonsData, error: lessonsError } = await supabase
+        const { data: lessonsData, error: lessonsError } = await supabaseProd
             .from("course_lessons")
             .select(
                 "id, module_id, title, description, lesson_type, content_url, \"order\", duration_minutes, mux_asset_id, mux_playback_id, mux_asset_status, created_at"
@@ -77,7 +87,7 @@ export async function GET(request: Request) {
         console.log("[production-lessons] 2. moduleIds a consultar:", moduleIds.length, moduleIds);
 
         // 2. Módulos
-        const { data: modulesData, error: modulesError } = await supabase
+        const { data: modulesData, error: modulesError } = await supabaseProd
             .from("course_modules")
             .select("id, course_id, title, \"order\"")
             .in("id", moduleIds);
@@ -104,7 +114,7 @@ export async function GET(request: Request) {
         console.log("[production-lessons] 4. courseIds a consultar:", courseIds.length, courseIds);
 
         // 3. Cursos
-        const { data: coursesData, error: coursesError } = await supabase
+        const { data: coursesData, error: coursesError } = await supabaseProd
             .from("courses")
             .select("id, title, community_id")
             .in("id", courseIds);
@@ -131,7 +141,7 @@ export async function GET(request: Request) {
         console.log("[production-lessons] 6. communityIds a consultar:", communityIds.length, communityIds);
 
         // 4. Comunidades
-        const { data: communitiesData, error: communitiesError } = await supabase
+        const { data: communitiesData, error: communitiesError } = await supabaseProd
             .from("communities")
             .select("id, name")
             .in("id", communityIds);
@@ -153,32 +163,89 @@ export async function GET(request: Request) {
         console.log("[production-lessons] 7. communities:", debug.step7_communities);
         const communitiesById = Object.fromEntries(communities.map((c) => [c.id, c]));
 
-        // 5. Armar respuesta con la misma forma que espera el cliente
+        // 5. Consultar resultados de procesamiento para los videos actuales (Select ALL columns to count emptiness)
+        const { data: processingData, error: processingError } = await supabaseLocal
+            .from("video_processing_results")
+            .select("*")
+            .in("video_id", lessons.map(l => l.id));
+
+        if (processingError) {
+            console.error("[production-lessons] processing fetch error:", processingError);
+            // No fallamos toda la request, solo logueamos
+        }
+
+        const processingMap = new Map();
+        if (processingData) {
+            processingData.forEach((p) => {
+                // Calcular campos llenos vs totales
+                // Definidos como 12 columnas en total en la estructura actual
+                const totalColumns = 12;
+
+                // Contar valores no nulos
+                const filledCount = Object.values(p).filter(val => val !== null && val !== "").length;
+
+                processingMap.set(p.video_id, {
+                    data: p,
+                    filledCount,
+                    totalColumns,
+                    hasSummary: !!p.ai_summary,
+                    hasTranscription: !!p.transcription
+                });
+            });
+        }
+
+        // 6. Armar respuesta con la misma forma que espera el cliente + STATUS PROCESAMIENTO
         const lessonsWithContext: ProductionLessonRow[] = lessons.map((lesson) => {
             const mod = modulesById[lesson.module_id];
             const course = mod ? coursesById[mod.course_id] : null;
             const community = course ? communitiesById[course.community_id] : null;
 
+            // Determinar status
+            const proc = processingMap.get(lesson.id);
+            let status: "red" | "yellow" | "green" = "red"; // Default: No procesado
+            const missingFields: string[] = [];
+            let filledCount = 0;
+            const totalCount = 12;
+
+            if (proc) {
+                filledCount = proc.filledCount;
+
+                if (proc.hasSummary && proc.hasTranscription) {
+                    status = "green";
+                } else {
+                    status = "yellow";
+                    if (!proc.hasTranscription) missingFields.push("transcripción");
+                    if (!proc.hasSummary) missingFields.push("resumen");
+                }
+            }
+
             return {
                 ...lesson,
                 order: (lesson as { order?: number }).order ?? 0,
+                // Inject new fields into the response (Check frontend type definition compatibility)
+                processing_status: status,
+                missing_fields_count: missingFields.length,
+                total_fields_count: totalCount,
+                filled_fields_count: filledCount, // New field
+                missing_fields: missingFields,
+
                 course_modules: mod
                     ? {
-                          id: mod.id,
-                          course_id: mod.course_id,
-                          title: mod.title,
-                          order: mod.order ?? 0,
-                          courses: course
-                              ? {
-                                    id: course.id,
-                                    title: course.title,
-                                    community_id: course.community_id,
-                                    communities: community
-                                        ? { id: community.id, name: community.name }
-                                        : null,
-                                }
-                              : null,
-                      }
+                        id: mod.id,
+                        course_id: mod.course_id,
+                        title: mod.title,
+                        order: mod.order ?? 0,
+                        courses: course
+                            ? {
+                                id: course.id,
+                                title: course.title,
+                                community_id: course.community_id,
+                                communities: community
+                                    ? { id: community.id, name: community.name }
+                                    : null,
+                            }
+                            : null,
+                    }
                     : null,
             };
         });
