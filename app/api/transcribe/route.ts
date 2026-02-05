@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createProductionClient } from "@/lib/supabase/production-client";
 import Mux from "@mux/mux-node";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -11,24 +12,43 @@ const WHISPER_SERVICE_URL = process.env.WHISPER_SERVICE_URL || "http://localhost
 
 export async function POST(request: NextRequest) {
     try {
-        const { videoId } = await request.json();
+        const { videoId, table = "media" } = await request.json();
+
+        console.log(`[transcribe] Request received for videoId: ${videoId}, table: ${table}`);
 
         if (!videoId) {
             return NextResponse.json({ error: "Missing videoId" }, { status: 400 });
         }
 
-        const supabase = await createClient();
+        // Validar tablas permitidas para evitar inyecciones o errores
+        const allowedTables = ["media", "course_lessons"];
+        if (!allowedTables.includes(table)) {
+            return NextResponse.json({ error: "Invalid table" }, { status: 400 });
+        }
+
+        let supabase;
+        if (table === "course_lessons") {
+            supabase = createProductionClient();
+            console.log("[transcribe] Using Production Client (Service Role)");
+        } else {
+            supabase = await createClient();
+            console.log("[transcribe] Using Standard User Client");
+        }
 
         // 1. Obtener mux_asset_id y verificar que existe
         const { data: video, error: fetchError } = await supabase
-            .from("media")
+            .from(table)
             .select("id, mux_asset_id")
             .eq("id", videoId)
             .single();
 
+        if (fetchError) {
+            console.error(`[transcribe] Fetch error for ${table} / ${videoId}:`, fetchError);
+        }
+
         if (fetchError || !video?.mux_asset_id) {
             return NextResponse.json(
-                { error: "Video o Asset ID no encontrado" },
+                { error: "Video o Asset ID no encontrado", details: fetchError },
                 { status: 404 }
             );
         }
@@ -80,7 +100,7 @@ export async function POST(request: NextRequest) {
 
         // 4. Guardar transcripción en Supabase
         const { error: updateError } = await supabase
-            .from("media")
+            .from(table)
             .update({ transcription })
             .eq("id", videoId);
 

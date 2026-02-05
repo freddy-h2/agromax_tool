@@ -7,28 +7,22 @@ import {
     Loader2,
     AlertCircle,
     RefreshCw,
-    Search,
     CheckCircle2,
     Clock,
     Layers,
     ChevronDown,
     ChevronRight,
     FolderOpen,
-    Folder,
     Play,
     ImageOff,
+    Sparkles,
+    Download,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { VideoPlayerModal } from "@/components/video-player-modal";
 import type { ProductionLessonRow } from "@/app/api/production-lessons/route";
 
-type CommunityOption = { id: string; name: string };
-type CourseOption = { id: string; title: string; community_id: string };
-type ModuleOption = { id: string; title: string; course_id: string };
-
-// Jerarquía para la pestaña "Por jerarquía"
 type HierarchyModule = { id: string; title: string; lessons: ProductionLessonRow[] };
 type HierarchyCourse = { id: string; title: string; modules: HierarchyModule[] };
 type HierarchyCommunity = { id: string; name: string; courses: HierarchyCourse[] };
@@ -126,45 +120,87 @@ function VideoThumbnail({
 function VideoCard({
     lesson,
     onPlay,
+    onProcess,
 }: {
     lesson: ProductionLessonRow;
     onPlay: (lesson: ProductionLessonRow) => void;
+    onProcess: (lesson: ProductionLessonRow) => Promise<void>;
 }) {
     const status = lesson.mux_asset_status ?? "—";
     const isReady = status === "ready";
+    const [processing, setProcessing] = useState(false);
+    const [success, setSuccess] = useState(false);
+
+    const handleProcessClick = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (processing) return;
+        setProcessing(true);
+        try {
+            await onProcess(lesson);
+            setSuccess(true);
+            setTimeout(() => setSuccess(false), 3000);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setProcessing(false);
+        }
+    };
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl border border-border bg-white/5 overflow-hidden hover:border-neon-blue/30 transition-colors"
+            className="rounded-xl border border-border bg-white/5 overflow-hidden hover:border-neon-blue/30 transition-colors group"
         >
             <VideoThumbnail
                 playbackId={lesson.mux_playback_id}
                 title={lesson.title}
                 onPlay={() => onPlay(lesson)}
             />
-            <div className="p-3">
-                <h4 className="font-medium text-sm text-foreground line-clamp-2 mb-1" title={lesson.title}>
+            <div className="p-2.5">
+                <h4 className="font-medium text-xs text-foreground line-clamp-2 mb-1" title={lesson.title}>
                     {lesson.title}
                 </h4>
                 {lesson.description && (
-                    <p className="text-xs text-foreground-muted line-clamp-2 mb-2" title={lesson.description}>
+                    <p className="text-[10px] text-foreground-muted line-clamp-2 mb-1.5" title={lesson.description}>
                         {lesson.description}
                     </p>
                 )}
-                <div className="flex items-center justify-between gap-2">
-                    <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isReady ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
-                            }`}
-                    >
-                        {isReady ? <CheckCircle2 className="h-3 w-3" /> : <Layers className="h-3 w-3" />}
-                        {status}
-                    </span>
+                <div className="flex items-center justify-between gap-2 mt-2">
+                    <div className="flex items-center gap-2">
+                        <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isReady ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
+                                }`}
+                        >
+                            {isReady ? <CheckCircle2 className="h-3 w-3" /> : <Layers className="h-3 w-3" />}
+                            {status}
+                        </span>
+
+                        {isReady && (
+                            <button
+                                onClick={handleProcessClick}
+                                disabled={processing}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${success
+                                    ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                    : "bg-neon-blue/10 text-neon-blue border border-neon-blue/30 hover:bg-neon-blue/20"
+                                    }`}
+                            >
+                                {processing ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : success ? (
+                                    <Download className="h-3 w-3" />
+                                ) : (
+                                    <Sparkles className="h-3 w-3" />
+                                )}
+                                {processing ? "Procesando..." : success ? "Descargado" : "Procesar"}
+                            </button>
+                        )}
+                    </div>
+
                     {lesson.duration_minutes != null && (
-                        <span className="text-xs text-foreground-muted flex items-center gap-1">
+                        <span className="text-[10px] text-foreground-muted flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {lesson.duration_minutes} min
+                            {lesson.duration_minutes}m
                         </span>
                     )}
                 </div>
@@ -177,13 +213,8 @@ export function ProductionPanel() {
     const [lessons, setLessons] = useState<ProductionLessonRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState("");
     const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
     const [showDebug, setShowDebug] = useState(false);
-    const [tab, setTab] = useState("lista");
-    const [selectedCommunityId, setSelectedCommunityId] = useState<string>("");
-    const [selectedCourseId, setSelectedCourseId] = useState<string>("");
-    const [selectedModuleId, setSelectedModuleId] = useState<string>("");
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
     // Video player modal state
@@ -224,37 +255,83 @@ export function ProductionPanel() {
         setPlayerOpen(true);
     }, []);
 
-    // Opciones para selectores (únicas, ordenadas)
-    const { communities, courses, modules } = useMemo(() => {
-        const commMap = new Map<string, CommunityOption>();
-        const courseMap = new Map<string, CourseOption>();
-        const modMap = new Map<string, ModuleOption>();
-        for (const l of lessons) {
-            const comm = l.course_modules?.courses?.communities;
-            const course = l.course_modules?.courses;
-            const mod = l.course_modules;
-            if (comm) commMap.set(comm.id, { id: comm.id, name: comm.name });
-            if (course) courseMap.set(course.id, { id: course.id, title: course.title, community_id: course.community_id });
-            if (mod) modMap.set(mod.id, { id: mod.id, title: mod.title, course_id: mod.course_id });
+    const handleProcessVideo = useCallback(async (lesson: ProductionLessonRow) => {
+        try {
+            // 1. Transcribir
+            const transcribeRes = await fetch("/api/transcribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ videoId: lesson.id, table: "course_lessons" }),
+            });
+
+            if (!transcribeRes.ok) {
+                const data = await transcribeRes.json();
+                throw new Error(data.error || "Error al transcribir");
+            }
+
+            const { transcription } = await transcribeRes.json();
+
+            // 2. Generar Resumen IA
+            const generateRes = await fetch("/api/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    transcription,
+                    field: "resumen",
+                }),
+            });
+
+            if (!generateRes.ok) {
+                const data = await generateRes.json();
+                throw new Error(data.error || "Error al generar resumen");
+            }
+
+            const { result: resumen } = await generateRes.json();
+
+            // 3. Generar archivo de texto y descargar
+            const communityName = lesson.course_modules?.courses?.communities?.name || "Sin comunidad";
+            const courseTitle = lesson.course_modules?.courses?.title || "Sin curso";
+            const moduleTitle = lesson.course_modules?.title || "Sin módulo";
+
+            const fileContent = `METADATOS
+----------------------------------------
+Título: ${lesson.title}
+Descripción: ${lesson.description || "N/A"}
+ID: ${lesson.id}
+Fecha Creación: ${new Date(lesson.created_at).toLocaleString()}
+Duración: ${lesson.duration_minutes} min
+
+CONTEXTO
+----------------------------------------
+Comunidad: ${communityName}
+Curso: ${courseTitle}
+Módulo: ${moduleTitle}
+
+RESUMEN IA
+----------------------------------------
+${resumen}
+
+TRANSCRIPCIÓN COMPLETA
+----------------------------------------
+${transcription}
+`;
+
+            const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${lesson.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_data.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+        } catch (err) {
+            console.error("Error processing video:", err);
+            alert(err instanceof Error ? err.message : "Error al procesar el video");
+            throw err; // Re-throw to handle state in VideoCard
         }
-        return {
-            communities: Array.from(commMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
-            courses: Array.from(courseMap.values()).sort((a, b) => a.title.localeCompare(b.title)),
-            modules: Array.from(modMap.values()).sort((a, b) => a.title.localeCompare(b.title)),
-        };
-    }, [lessons]);
-
-    // Cursos filtrados por comunidad seleccionada
-    const coursesByCommunity = useMemo(() => {
-        if (!selectedCommunityId) return courses;
-        return courses.filter((c) => c.community_id === selectedCommunityId);
-    }, [courses, selectedCommunityId]);
-
-    // Módulos filtrados por curso seleccionado
-    const modulesByCourse = useMemo(() => {
-        if (!selectedCourseId) return modules;
-        return modules.filter((m) => m.course_id === selectedCourseId);
-    }, [modules, selectedCourseId]);
+    }, []);
 
     // Jerarquía: comunidad → curso → módulo → lecciones
     const hierarchy = useMemo((): HierarchyCommunity[] => {
@@ -283,30 +360,6 @@ export function ProductionPanel() {
         return Array.from(byCommunity.values()).sort((a, b) => a.name.localeCompare(b.name));
     }, [lessons]);
 
-    // Lecciones filtradas por selectores + búsqueda
-    const filteredLessons = useMemo(() => {
-        return lessons.filter((lesson) => {
-            const commId = lesson.course_modules?.courses?.community_id;
-            const courseId = lesson.course_modules?.course_id;
-            const modId = lesson.module_id;
-            if (selectedCommunityId && commId !== selectedCommunityId) return false;
-            if (selectedCourseId && courseId !== selectedCourseId) return false;
-            if (selectedModuleId && modId !== selectedModuleId) return false;
-            const q = searchQuery.toLowerCase();
-            if (!q) return true;
-            const community = lesson.course_modules?.courses?.communities?.name ?? "";
-            const course = lesson.course_modules?.courses?.title ?? "";
-            const moduleTitle = lesson.course_modules?.title ?? "";
-            const title = lesson.title ?? "";
-            return (
-                community.toLowerCase().includes(q) ||
-                course.toLowerCase().includes(q) ||
-                moduleTitle.toLowerCase().includes(q) ||
-                title.toLowerCase().includes(q)
-            );
-        });
-    }, [lessons, selectedCommunityId, selectedCourseId, selectedModuleId, searchQuery]);
-
     const toggleExpanded = (key: string) => {
         setExpanded((prev) => {
             const next = new Set(prev);
@@ -317,290 +370,179 @@ export function ProductionPanel() {
     };
 
     return (
-        <div className="max-w-7xl pb-20">
+        <div className="max-w-7xl pb-10">
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="mb-8"
+                className="mb-4"
             >
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-neon-blue/10 border border-neon-blue/20">
-                        <Film className="h-5 w-5 text-neon-blue" />
+                <div className="flex items-center gap-2 mb-1">
+                    <div className="p-1.5 rounded-lg bg-neon-blue/10 border border-neon-blue/20">
+                        <Film className="h-4 w-4 text-neon-blue" />
                     </div>
-                    <h1 className="text-2xl font-bold text-foreground">
+                    <h1 className="text-xl font-bold text-foreground">
                         Videos ya configurados (Producción)
                     </h1>
                 </div>
-                <p className="text-foreground-muted">
-                    Navega por comunidad, curso y módulo para ver las lecciones en video con Mux
-                    listo. Haz clic en un video para reproducirlo.
+                <p className="text-sm text-foreground-muted">
+                    Selecciona una comunidad para ver sus cursos y módulos disponibles.
                 </p>
             </motion.div>
 
             <Card className="border-neon-blue/20 shadow-lg shadow-neon-blue/5">
-                <CardHeader className="border-b border-border/50 pb-4">
-                    <div className="flex flex-col gap-4">
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                            <CardTitle>Lecciones con video listo</CardTitle>
-                            <div className="flex items-center gap-2">
+                <CardHeader className="border-b border-border/50 pb-2 pt-4 px-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <CardTitle className="text-lg">Catálogo de Comunidades</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => fetchLessons(true)}
+                                disabled={loading}
+                                className="p-1.5 rounded-lg border border-border hover:bg-white/5 text-foreground-muted hover:text-foreground transition-colors disabled:opacity-50"
+                                title="Recargar"
+                            >
+                                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                            </button>
+                            {debugInfo && (
                                 <button
                                     type="button"
-                                    onClick={() => fetchLessons(true)}
-                                    disabled={loading}
-                                    className="p-2 rounded-lg border border-border hover:bg-white/5 text-foreground-muted hover:text-foreground transition-colors disabled:opacity-50"
-                                    title="Recargar"
+                                    onClick={() => setShowDebug((s) => !s)}
+                                    className="text-[10px] px-2 py-0.5 rounded border border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
                                 >
-                                    <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                                    {showDebug ? "Ocultar" : "Ver"} debug
                                 </button>
-                                {debugInfo && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowDebug((s) => !s)}
-                                        className="text-xs px-2 py-1 rounded border border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
-                                    >
-                                        {showDebug ? "Ocultar" : "Ver"} debug
-                                    </button>
-                                )}
-                            </div>
+                            )}
                         </div>
-
-                        <Tabs value={tab} onValueChange={setTab}>
-                            <TabsList className="flex gap-1">
-                                <TabsTrigger value="lista">Galería con filtros</TabsTrigger>
-                                <TabsTrigger value="jerarquia">Por jerarquía</TabsTrigger>
-                            </TabsList>
-                        </Tabs>
                     </div>
                 </CardHeader>
 
-                <CardContent className="pt-6">
+                <CardContent className="pt-4 px-4 pb-6">
                     {loading && (
-                        <div className="flex flex-col items-center justify-center py-16 gap-4 text-foreground-muted">
-                            <Loader2 className="h-10 w-10 animate-spin text-neon-blue" />
-                            <p>Cargando lecciones desde producción...</p>
+                        <div className="flex flex-col items-center justify-center py-12 gap-3 text-foreground-muted">
+                            <Loader2 className="h-8 w-8 animate-spin text-neon-blue" />
+                            <p className="text-sm">Cargando comunidades...</p>
                         </div>
                     )}
 
                     {error && (
-                        <div className="flex flex-col items-center justify-center py-16 gap-4 text-error">
-                            <AlertCircle className="h-10 w-10" />
-                            <p className="text-center max-w-md">{error}</p>
+                        <div className="flex flex-col items-center justify-center py-12 gap-3 text-error">
+                            <AlertCircle className="h-8 w-8" />
+                            <p className="text-center max-w-md text-sm">{error}</p>
                             <button
                                 type="button"
                                 onClick={() => fetchLessons(false)}
-                                className="bg-neon-blue/20 hover:bg-neon-blue/30 text-neon-blue border border-neon-blue/30 rounded-lg py-2 px-4 text-sm font-medium"
+                                className="bg-neon-blue/20 hover:bg-neon-blue/30 text-neon-blue border border-neon-blue/30 rounded-lg py-1.5 px-3 text-xs font-medium"
                             >
                                 Reintentar
                             </button>
                         </div>
                     )}
 
-                    {!loading && !error && (
-                        <Tabs value={tab} onValueChange={() => { }}>
-                            {/* Galería: selectores + grid de tarjetas */}
-                            <TabsContent value="lista" className="mt-0">
-                                <CardDescription className="mb-3">
-                                    Filtra por comunidad, curso y módulo. Haz clic en un video para reproducirlo.
-                                </CardDescription>
-                                <div className="flex flex-wrap items-end gap-3 mb-6">
-                                    <div className="flex flex-col gap-1 min-w-[160px]">
-                                        <label className="text-xs font-medium text-foreground-muted">
-                                            Comunidad
-                                        </label>
-                                        <select
-                                            value={selectedCommunityId}
-                                            onChange={(e) => {
-                                                setSelectedCommunityId(e.target.value);
-                                                setSelectedCourseId("");
-                                                setSelectedModuleId("");
-                                            }}
-                                            className="h-9 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-neon-blue/30"
-                                        >
-                                            <option value="">Todas</option>
-                                            {communities.map((c) => (
-                                                <option key={c.id} value={c.id}>
-                                                    {c.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="flex flex-col gap-1 min-w-[200px]">
-                                        <label className="text-xs font-medium text-foreground-muted">
-                                            Curso
-                                        </label>
-                                        <select
-                                            value={selectedCourseId}
-                                            onChange={(e) => {
-                                                setSelectedCourseId(e.target.value);
-                                                setSelectedModuleId("");
-                                            }}
-                                            className="h-9 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-neon-blue/30"
-                                        >
-                                            <option value="">Todos</option>
-                                            {coursesByCommunity.map((c) => (
-                                                <option key={c.id} value={c.id}>
-                                                    {c.title}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="flex flex-col gap-1 min-w-[200px]">
-                                        <label className="text-xs font-medium text-foreground-muted">
-                                            Módulo
-                                        </label>
-                                        <select
-                                            value={selectedModuleId}
-                                            onChange={(e) => setSelectedModuleId(e.target.value)}
-                                            className="h-9 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-neon-blue/30"
-                                        >
-                                            <option value="">Todos</option>
-                                            {modulesByCourse.map((m) => (
-                                                <option key={m.id} value={m.id}>
-                                                    {m.title}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="flex flex-col gap-1 flex-1 min-w-[200px] max-w-xs">
-                                        <label className="text-xs font-medium text-foreground-muted">
-                                            Buscar
-                                        </label>
-                                        <div className="relative">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-muted" />
-                                            <Input
-                                                placeholder="Lección, curso, módulo..."
-                                                className="pl-9 h-9"
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
+                    {!loading && !error && hierarchy.length === 0 && (
+                        <div className="text-center py-8 text-foreground-muted text-sm">
+                            No hay contenido disponible por el momento.
+                        </div>
+                    )}
 
-                                {/* Grid de tarjetas de video */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    {filteredLessons.map((lesson) => (
-                                        <VideoCard
-                                            key={lesson.id}
-                                            lesson={lesson}
-                                            onPlay={handlePlayVideo}
-                                        />
-                                    ))}
-                                </div>
+                    {!loading && !error && hierarchy.length > 0 && (
+                        <Tabs defaultValue={hierarchy[0]?.id} className="w-full">
+                            <TabsList className="mb-4 w-full flex-wrap h-auto justify-start border-b border-border bg-transparent p-0 rounded-none">
+                                {hierarchy.map((comm) => (
+                                    <TabsTrigger
+                                        key={comm.id}
+                                        value={comm.id}
+                                        className="rounded-none border-b-2 border-transparent px-3 py-1.5 text-sm data-[state=active]:border-neon-blue data-[state=active]:bg-transparent data-[state=active]:text-neon-blue data-[state=active]:shadow-none"
+                                    >
+                                        {comm.name}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
 
-                                {filteredLessons.length === 0 && (
-                                    <div className="text-center py-12 text-foreground-muted">
-                                        {lessons.length === 0
-                                            ? "No hay lecciones de video con Mux configurado en producción."
-                                            : "Ningún resultado con los filtros seleccionados."}
+                            {hierarchy.map((comm) => (
+                                <TabsContent key={comm.id} value={comm.id} className="mt-0 space-y-2 animate-in fade-in-50">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <FolderOpen className="h-4 w-4 text-neon-blue" />
+                                        <h3 className="text-base font-semibold text-foreground">
+                                            Cursos en {comm.name}
+                                        </h3>
+                                        <span className="text-[10px] text-foreground-muted bg-white/5 px-1.5 py-0.5 rounded-full">
+                                            {comm.courses.length} curso(s)
+                                        </span>
                                     </div>
-                                )}
 
-                                {filteredLessons.length > 0 && (
-                                    <p className="text-xs text-foreground-muted mt-6">
-                                        Total: {filteredLessons.length} video(s)
-                                    </p>
-                                )}
-                            </TabsContent>
-
-                            {/* Por jerarquía: árbol comunidad → curso → módulo → videos */}
-                            <TabsContent value="jerarquia" className="mt-0">
-                                <CardDescription className="mb-4">
-                                    Expande cada nivel para ver cursos, módulos y videos. Haz clic en un video para reproducirlo.
-                                </CardDescription>
-                                <div className="space-y-2">
-                                    {hierarchy.length === 0 && (
-                                        <div className="text-center py-12 text-foreground-muted">
-                                            No hay datos con comunidad/curso/módulo. Revisa que uses la service role key.
+                                    {comm.courses.length === 0 && (
+                                        <div className="text-xs text-foreground-muted italic px-4">
+                                            Esta comunidad aún no tiene cursos con videos listos.
                                         </div>
                                     )}
-                                    {hierarchy.map((comm) => {
-                                        const commKey = `comm-${comm.id}`;
-                                        const isCommOpen = expanded.has(commKey);
+
+                                    {comm.courses.map((course) => {
+                                        const courseKey = `course-${course.id}`;
+                                        const isCourseOpen = expanded.has(courseKey);
                                         return (
-                                            <div key={comm.id} className="rounded-lg border border-border overflow-hidden">
+                                            <div key={course.id} className="rounded-md border border-border bg-background/50 overflow-hidden">
                                                 <button
                                                     type="button"
-                                                    onClick={() => toggleExpanded(commKey)}
-                                                    className="w-full flex items-center gap-2 px-4 py-3 text-left bg-white/5 hover:bg-white/10 transition-colors"
+                                                    onClick={() => toggleExpanded(courseKey)}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors"
                                                 >
-                                                    {isCommOpen ? (
-                                                        <ChevronDown className="h-4 w-4 text-foreground-muted" />
+                                                    {isCourseOpen ? (
+                                                        <ChevronDown className="h-3.5 w-3.5 text-foreground-muted" />
                                                     ) : (
-                                                        <ChevronRight className="h-4 w-4 text-foreground-muted" />
+                                                        <ChevronRight className="h-3.5 w-3.5 text-foreground-muted" />
                                                     )}
-                                                    {isCommOpen ? (
-                                                        <FolderOpen className="h-4 w-4 text-neon-blue" />
-                                                    ) : (
-                                                        <Folder className="h-4 w-4 text-foreground-muted" />
-                                                    )}
-                                                    <span className="font-medium text-foreground">{comm.name}</span>
-                                                    <span className="text-xs text-foreground-muted">
-                                                        {comm.courses.length} curso(s)
+                                                    <span className="font-medium text-sm text-foreground">{course.title}</span>
+                                                    <span className="text-[10px] text-foreground-muted ml-auto bg-white/5 px-1.5 py-0.5 rounded">
+                                                        {course.modules.length} módulo(s)
                                                     </span>
                                                 </button>
-                                                {isCommOpen && (
-                                                    <div className="border-t border-border bg-background/50">
-                                                        {comm.courses.map((course) => {
-                                                            const courseKey = `course-${course.id}`;
-                                                            const isCourseOpen = expanded.has(courseKey);
+
+                                                {isCourseOpen && (
+                                                    <div className="border-t border-border bg-black/20">
+                                                        {course.modules.length === 0 && (
+                                                            <div className="px-8 py-2 text-xs text-foreground-muted italic">
+                                                                Sin módulos
+                                                            </div>
+                                                        )}
+                                                        {course.modules.map((mod) => {
+                                                            const modKey = `mod-${mod.id}`;
+                                                            const isModOpen = expanded.has(modKey);
                                                             return (
-                                                                <div key={course.id} className="border-b border-border/50 last:border-b-0">
+                                                                <div key={mod.id} className="border-b border-border/50 last:border-b-0">
                                                                     <button
                                                                         type="button"
-                                                                        onClick={() => toggleExpanded(courseKey)}
-                                                                        className="w-full flex items-center gap-2 pl-8 pr-4 py-2.5 text-left hover:bg-white/5 transition-colors"
+                                                                        onClick={() => toggleExpanded(modKey)}
+                                                                        className="w-full flex items-center gap-2 pl-8 pr-3 py-1.5 text-left hover:bg-white/5 transition-colors"
                                                                     >
-                                                                        {isCourseOpen ? (
-                                                                            <ChevronDown className="h-3.5 w-3.5 text-foreground-muted" />
+                                                                        {isModOpen ? (
+                                                                            <ChevronDown className="h-3 w-3 text-foreground-muted" />
                                                                         ) : (
-                                                                            <ChevronRight className="h-3.5 w-3.5 text-foreground-muted" />
+                                                                            <ChevronRight className="h-3 w-3 text-foreground-muted" />
                                                                         )}
-                                                                        <span className="text-sm font-medium text-foreground">{course.title}</span>
-                                                                        <span className="text-xs text-foreground-muted">
-                                                                            {course.modules.length} módulo(s)
+                                                                        <Layers className="h-3.5 w-3.5 text-neon-blue opacity-70" />
+                                                                        <span className="text-xs text-foreground">{mod.title}</span>
+                                                                        <span className="text-[10px] text-foreground-muted ml-auto">
+                                                                            {mod.lessons.length} video(s)
                                                                         </span>
                                                                     </button>
-                                                                    {isCourseOpen && (
-                                                                        <div className="bg-background/30">
-                                                                            {course.modules.map((mod) => {
-                                                                                const modKey = `mod-${mod.id}`;
-                                                                                const isModOpen = expanded.has(modKey);
-                                                                                return (
-                                                                                    <div key={mod.id} className="border-t border-border/30">
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            onClick={() => toggleExpanded(modKey)}
-                                                                                            className="w-full flex items-center gap-2 pl-14 pr-4 py-2 text-left hover:bg-white/5 transition-colors"
-                                                                                        >
-                                                                                            {isModOpen ? (
-                                                                                                <ChevronDown className="h-3 w-3 text-foreground-muted" />
-                                                                                            ) : (
-                                                                                                <ChevronRight className="h-3 w-3 text-foreground-muted" />
-                                                                                            )}
-                                                                                            <Film className="h-3 w-3 text-neon-blue" />
-                                                                                            <span className="text-sm text-foreground">{mod.title}</span>
-                                                                                            <span className="text-xs text-foreground-muted">
-                                                                                                {mod.lessons.length} video(s)
-                                                                                            </span>
-                                                                                        </button>
-                                                                                        {isModOpen && (
-                                                                                            <div className="pl-16 pr-4 pb-4 pt-2">
-                                                                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                                                                    {mod.lessons.map((lesson) => (
-                                                                                                        <VideoCard
-                                                                                                            key={lesson.id}
-                                                                                                            lesson={lesson}
-                                                                                                            onPlay={handlePlayVideo}
-                                                                                                        />
-                                                                                                    ))}
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                );
-                                                                            })}
+
+                                                                    {isModOpen && (
+                                                                        <div className="pl-8 pr-3 pb-3 pt-2">
+                                                                            {mod.lessons.length === 0 ? (
+                                                                                <p className="text-[10px] text-foreground-muted italic">Sin videos en este módulo.</p>
+                                                                            ) : (
+                                                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                                                                    {mod.lessons.map((lesson) => (
+                                                                                        <VideoCard
+                                                                                            key={lesson.id}
+                                                                                            lesson={lesson}
+                                                                                            onPlay={handlePlayVideo}
+                                                                                            onProcess={handleProcessVideo}
+                                                                                        />
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -611,15 +553,15 @@ export function ProductionPanel() {
                                             </div>
                                         );
                                     })}
-                                </div>
-                            </TabsContent>
+                                </TabsContent>
+                            ))}
                         </Tabs>
                     )}
 
                     {showDebug && debugInfo && (
-                        <div className="mt-6 p-4 rounded-lg bg-black/40 border border-amber-500/30 overflow-auto max-h-80">
-                            <p className="text-xs font-medium text-amber-500 mb-2">Debug API (pasos 1–8)</p>
-                            <pre className="text-xs text-foreground-muted whitespace-pre-wrap font-mono">
+                        <div className="mt-4 p-3 rounded-lg bg-black/40 border border-amber-500/30 overflow-auto max-h-60">
+                            <p className="text-[10px] font-medium text-amber-500 mb-1">Debug API</p>
+                            <pre className="text-[10px] text-foreground-muted whitespace-pre-wrap font-mono">
                                 {JSON.stringify(debugInfo, null, 2)}
                             </pre>
                         </div>
