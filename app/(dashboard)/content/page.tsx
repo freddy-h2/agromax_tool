@@ -19,6 +19,8 @@ export default async function ContentPage() {
         .select("*")
         .order("created_at", { ascending: false });
 
+    const enrichedVideos = videos || [];
+
     // Fetch production livestreams (for "Publicados")
     const productionClient = createProductionClient();
     const { data: pastLivestreams } = await productionClient
@@ -26,5 +28,8 @@ export default async function ContentPage() {
         .select("*")
         .order("created_at", { ascending: false });
 
-    return <ContentClient videos={videos || []} pastLivestreams={pastLivestreams || []} />;
+    const enrichedLivestreams = pastLivestreams || [];
+
+    return <ContentClient videos={enrichedVideos} pastLivestreams={enrichedLivestreams} />;
+
 }
