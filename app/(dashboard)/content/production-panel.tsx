@@ -272,7 +272,7 @@ export function ProductionPanel() {
             const { transcription } = await transcribeRes.json();
             console.log("Transcription result:", transcription);
 
-            let resumen = "No se pudo generar resumen (sin transcripción).";
+            let resumen = "";
 
             if (transcription && transcription.length > 0) {
                 // 2. Generar Resumen IA solo si hay transcripción
@@ -290,7 +290,7 @@ export function ProductionPanel() {
                         const data = await generateRes.json();
                         if (data.result) resumen = data.result;
                     } else {
-                        console.warn("Generate summary failed, using default.");
+                        console.warn("Generate summary failed.");
                     }
                 } catch (e) {
                     console.error("Error generating summary:", e);
@@ -299,48 +299,35 @@ export function ProductionPanel() {
                 console.warn("Transcription is empty, skipping AI summary.");
             }
 
-            // 3. Generar archivo de texto y GUARDAR LOCALMENTE
+            // 3. Guardar en Base de Datos (Supabase - video_processing_results)
             const communityName = lesson.course_modules?.courses?.communities?.name || "Sin comunidad";
             const courseTitle = lesson.course_modules?.courses?.title || "Sin curso";
             const moduleTitle = lesson.course_modules?.title || "Sin módulo";
 
-            const fileContent = `METADATOS
-----------------------------------------
-Título: ${lesson.title}
-Descripción: ${lesson.description || "N/A"}
-ID: ${lesson.id}
-Fecha Creación: ${new Date(lesson.created_at).toLocaleString()}
-Duración: ${lesson.duration_minutes} min
+            const dbPayload = {
+                video_id: lesson.id,
+                video_title: lesson.title,
+                video_description: lesson.description || null,
+                video_created_at: lesson.created_at,
+                duration_minutes: lesson.duration_minutes,
+                community_name: communityName,
+                course_title: courseTitle,
+                module_title: moduleTitle,
+                ai_summary: resumen || null, // Send null if failed or empty
+                transcription: transcription || null
+            };
 
-CONTEXTO
-----------------------------------------
-Comunidad: ${communityName}
-Curso: ${courseTitle}
-Módulo: ${moduleTitle}
-
-RESUMEN IA
-----------------------------------------
-${resumen}
-
-TRANSCRIPCIÓN COMPLETA
-----------------------------------------
-${transcription || "(Sin transcripción disponible)"}
-`;
-
-            // Call API to save file locally
-            const filename = `${lesson.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_data.txt`;
-
-            const saveRes = await fetch("/api/save-file", {
+            const saveRes = await fetch("/api/save-db", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ filename, content: fileContent }),
+                body: JSON.stringify(dbPayload),
             });
 
             if (!saveRes.ok) {
-                throw new Error("Error al guardar el archivo en el servidor");
+                const errData = await saveRes.json().catch(() => ({}));
+                throw new Error("Error al guardar en base de datos: " + (errData.error || saveRes.statusText));
             }
-
-            console.log("File saved successfully on server.");
+            console.log("Data processed and saved to DB successfully.");
 
         } catch (err) {
             console.error("Error processing video:", err);

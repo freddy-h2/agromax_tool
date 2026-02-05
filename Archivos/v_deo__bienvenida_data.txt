@@ -14,7 +14,7 @@ Módulo: Bienvenido (a)
 
 RESUMEN IA
 ----------------------------------------
-No se pudo generar resumen (sin transcripción).
+Error al conectar con IA (api key o servicio). Se procedió a guardar solo la transcripción.
 
 TRANSCRIPCIÓN COMPLETA
 ----------------------------------------

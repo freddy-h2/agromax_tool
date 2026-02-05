@@ -98,20 +98,24 @@ export async function POST(request: NextRequest) {
 
         const { transcription } = await whisperRes.json();
 
-        // 4. Guardar transcripción en Supabase
-        const { error: updateError } = await supabase
-            .from(table)
-            .update({ transcription })
-            .eq("id", videoId);
+        // 4. Guardar transcripción en Supabase (Solo si la tabla es 'media', course_lessons es read-only)
+        if (table === "media") {
+            const { error: updateError } = await supabase
+                .from(table)
+                .update({ transcription })
+                .eq("id", videoId);
 
-        if (updateError) {
-            console.error(`[transcribe] DB Update Error for ${table} / ${videoId}:`, updateError);
-            // Return success anyway so client can proceed with the transcription we have
-            return NextResponse.json({
-                success: true,
-                warning: "Transcripción generada pero no se pudo guardar en base de datos.",
-                transcription
-            });
+            if (updateError) {
+                console.error(`[transcribe] DB Update Error for ${table} / ${videoId}:`, updateError);
+                // Return success anyway so client can proceed with the transcription we have
+                return NextResponse.json({
+                    success: true,
+                    warning: "Transcripción generada pero no se pudo guardar en base de datos.",
+                    transcription
+                });
+            }
+        } else {
+            console.log(`[transcribe] Skipping DB update for table: ${table} (Read-only mode)`);
         }
 
         return NextResponse.json({ transcription, success: true });
