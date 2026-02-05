@@ -21,19 +21,9 @@ const menuItems = [
         icon: FileText,
     },
     {
-        name: "Videos producción",
-        href: "/production-courses",
-        icon: Film,
-    },
-    {
         name: "Administrar",
         href: "/admin",
         icon: Settings,
-    },
-    {
-        name: "Cursos",
-        href: "/cursos",
-        icon: BookOpen,
     },
     {
         name: "Subir Video",
