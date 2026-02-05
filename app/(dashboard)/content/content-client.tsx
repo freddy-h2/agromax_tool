@@ -6,6 +6,7 @@ import {
     FileText, Wand2, Loader2, Save, Check, Search, BrainCircuit, Calendar, Clock, Timer,
     Plus, Eye, Video as VideoIcon, Play, Settings, AlertTriangle, Download, Edit, X
 } from "lucide-react";
+import { publishVideo, unpublishVideo } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -158,30 +159,24 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
         setLoading(true);
         try {
             if (confirmAction.type === "publish") {
-                // Publish: Insert into past_livestreams
+                // Publish: Server Action
                 const video = confirmAction.video as Video;
-                const { error } = await supabase
-                    .from("past_livestreams")
-                    .insert([{
-                        title: video.title,
-                        description: video.description,
-                        mux_playback_id: video.mux_playback_id,
-                        live_date: video.live_date,
-                        duration_minutes: video.duration_minutes,
-                        live_stream_config_id: video.live_stream_config_id,
-                        resumen: video.resumen,
-                        created_at: video.created_at, // Copy original creation date as requested
-                    }]);
 
-                if (error) throw error;
+                // Validate required fields before publishing
+                if (!video.live_date) {
+                    alert("⚠️ Este video no tiene una fecha asignada (live_date). Por favor, edita el video y agrega una fecha antes de publicar.");
+                    setLoading(false);
+                    return;
+                }
+
+                const result = await publishVideo(video);
+
+                if (!result.success) throw new Error(result.error);
             } else {
-                // Unpublish: Delete from past_livestreams
-                const { error } = await supabase
-                    .from("past_livestreams")
-                    .delete()
-                    .eq("id", confirmAction.video.id);
+                // Unpublish: Server Action
+                const result = await unpublishVideo(confirmAction.video.id);
 
-                if (error) throw error;
+                if (!result.success) throw new Error(result.error);
             }
 
             setConfirmAction({ isOpen: false, type: "publish", video: null });
@@ -342,9 +337,13 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
         if (!selectedVideo) return;
         setLoading(true);
 
-        const combinedDate = formData.live_date_date && formData.live_date_time
-            ? new Date(`${formData.live_date_date}T${formData.live_date_time}:00`).toISOString()
-            : null;
+        // Build live_date: if only date is provided, default time to 00:00
+        // If only time is provided without date, ignore it (date is required)
+        let combinedDate: string | null = null;
+        if (formData.live_date_date) {
+            const timeStr = formData.live_date_time || "00:00";
+            combinedDate = new Date(`${formData.live_date_date}T${timeStr}:00`).toISOString();
+        }
 
         try {
             const { error } = await supabase
