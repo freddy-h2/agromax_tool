@@ -1,13 +1,24 @@
 import { OpenAI } from "openai";
 import { NextRequest, NextResponse } from "next/server";
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-
 export async function POST(request: NextRequest) {
     try {
         const { transcription, field, currentContent } = await request.json();
+
+        // Debug API Key presence (do not log full key)
+        const apiKey = process.env.OPENAI_API_KEY;
+        console.log(`[generate] API Key loaded: ${apiKey ? "YES, length=" + apiKey.length + ", suffix=" + apiKey.slice(-5) : "NO"}`);
+
+        if (!apiKey) {
+            return NextResponse.json(
+                { error: "La API Key de OpenAI no está configurada." },
+                { status: 500 }
+            );
+        }
+
+        const openai = new OpenAI({
+            apiKey: apiKey,
+        });
 
         // Use currentContent to refine if provided
         let contextAddition = "";
@@ -19,13 +30,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 { error: "Se requiere la transcripción para generar contenido." },
                 { status: 400 }
-            );
-        }
-
-        if (!process.env.OPENAI_API_KEY) {
-            return NextResponse.json(
-                { error: "La API Key de OpenAI no está configurada." },
-                { status: 500 }
             );
         }
 
@@ -68,8 +72,10 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: "Campo no válido" }, { status: 400 });
         }
 
+        console.log(`[generate] Calling OpenAI model: gpt-4o for field: ${field}`);
+
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o", // Or gpt-3.5-turbo if prefered for cost
+            model: "gpt-4o",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt },
@@ -83,6 +89,12 @@ export async function POST(request: NextRequest) {
 
     } catch (error: unknown) {
         console.error("OpenAI Error:", error);
+        // Log more details if available
+        if (error && typeof error === 'object' && 'code' in error) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            console.error("OpenAI Error Code:", (error as any).code);
+        }
+
         const message = error instanceof Error ? error.message : "Unknown error";
         return NextResponse.json(
             { error: "Error al generar contenido con IA", details: message },
