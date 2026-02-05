@@ -15,6 +15,29 @@ import { Button } from "@/components/ui/button";
 import { ProductionPanel } from "./production-panel";
 import { Eye, Download, Edit, X, Play, Video as VideoIcon } from "lucide-react";
 import MuxPlayer from "@mux/mux-player-react";
+import { AdminList } from "../admin/admin-list";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Plus, Settings, AlertTriangle } from "lucide-react";
+
+// Schema Configuration for Manual Import
+const manualImportSchema = z.object({
+    title: z.string().min(1, "El título es requerido"),
+    description: z.string().optional(),
+    mux_playback_id: z.string().optional(),
+    mux_asset_id: z.string().optional(),
+}).superRefine((data, ctx) => {
+    if (!data.mux_playback_id && !data.mux_asset_id) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Debes ingresar al menos un ID de Mux (Asset o Playback).",
+            path: ["mux_asset_id"],
+        });
+    }
+});
+
+type ManualImportFormValues = z.infer<typeof manualImportSchema>;
 
 // Unified Video Interface to handle both local uploads and production streams
 interface Video {
@@ -51,6 +74,7 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
     // Modal State
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false); // New state for video-only player
+    const [isManualImportOpen, setIsManualImportOpen] = useState(false); // New state for manual import modal
     const [isEditing, setIsEditing] = useState(false);
 
     // Editor State
@@ -60,6 +84,46 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
     // AI State
     const [generatingTranscription, setGeneratingTranscription] = useState(false);
     const [generatingField, setGeneratingField] = useState<string | null>(null);
+
+    // Manual Import Form
+    const manualImportForm = useForm<ManualImportFormValues>({
+        resolver: zodResolver(manualImportSchema),
+        defaultValues: {
+            title: "",
+            description: "",
+            mux_playback_id: "",
+            mux_asset_id: "",
+        },
+    });
+
+    const onManualImportSubmit = async (data: ManualImportFormValues) => {
+        setLoading(true);
+        try {
+            const { error } = await supabase.from("media").insert([
+                {
+                    title: data.title.trim(),
+                    description: data.description,
+                    mux_playback_id: data.mux_playback_id?.trim(),
+                    mux_asset_id: data.mux_asset_id?.trim(),
+                },
+            ]);
+
+            if (error) throw error;
+
+            setSuccess(true);
+            manualImportForm.reset();
+            router.refresh();
+
+            // Optional: Close modal after success or keep open for more additions?
+            // User asked to clone "Administrar", which stays open. So we keep it open but show success.
+            setTimeout(() => setSuccess(false), 3000);
+        } catch (error) {
+            console.error("Error creating video:", error);
+            alert("Error al crear el video. Verifica la consola.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Form State
     const [formData, setFormData] = useState({
@@ -141,6 +205,7 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
     const handleCloseModal = () => {
         setIsDetailOpen(false);
         setIsVideoPlayerOpen(false);
+        setIsManualImportOpen(false);
     };
 
     const toggleEditMode = () => {
@@ -279,6 +344,8 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                 </p>
             </motion.div>
 
+
+
             <Tabs defaultValue="lives" className="h-full flex flex-col">
                 <TabsList className="mb-4 w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
                     <TabsTrigger
@@ -297,7 +364,7 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
 
                 <TabsContent value="lives" className="flex-1 mt-0 h-full flex flex-col overflow-hidden">
                     <Tabs defaultValue="published" className="flex flex-col h-full w-full">
-                        <div className="border-b border-white/10 mb-4 shrink-0">
+                        <div className="border-b border-white/10 mb-4 shrink-0 flex items-center justify-between">
                             <TabsList className="w-auto justify-start bg-transparent p-0 gap-6 h-auto">
                                 <TabsTrigger
                                     value="published"
@@ -318,6 +385,8 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                                     </span>
                                 </TabsTrigger>
                             </TabsList>
+
+
                         </div>
 
                         <TabsContent value="published" className="flex-1 mt-0 overflow-y-auto custom-scrollbar pr-2 pb-10">
@@ -400,15 +469,25 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
 
                         <TabsContent value="pending" className="flex-1 mt-0 overflow-y-auto custom-scrollbar pr-2 pb-10">
                             <div className="flex flex-col gap-6">
-                                {/* Search Bar */}
-                                <div className="relative max-w-md">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-muted" />
-                                    <Input
-                                        placeholder="Buscar video..."
-                                        className="pl-9"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                    />
+                                {/* Header Actions (Search + Manual Import) */}
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="relative max-w-md w-full">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-muted" />
+                                        <Input
+                                            placeholder="Buscar video..."
+                                            className="pl-9"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <Button
+                                        onClick={() => setIsManualImportOpen(true)}
+                                        className="bg-neon-purple hover:bg-neon-purple/90 text-white border-none shadow-lg shadow-neon-purple/20 gap-2 shrink-0"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        Agregar video manualmente de mux
+                                    </Button>
                                 </div>
 
                                 {/* Gallery Grid */}
@@ -849,6 +928,145 @@ export function ContentClient({ videos, pastLivestreams }: ContentClientProps) {
                     </div>
                 )}
             </Modal >
+
+
+            {/* Manual Import Modal (Cloned from Admin Panel) */}
+            <Modal
+                isOpen={isManualImportOpen}
+                onClose={handleCloseModal}
+                title="Administración Manual de Mux"
+                className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden"
+            >
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                        {/* Form Section */}
+                        <div className="xl:col-span-1">
+                            <div className="sticky top-0">
+                                <form onSubmit={manualImportForm.handleSubmit(onManualImportSubmit)}>
+                                    <Card className="border-neon-purple/20 shadow-lg shadow-neon-purple/5">
+                                        <CardHeader>
+                                            <div className="flex items-center justify-between">
+                                                <CardTitle className="flex items-center gap-2">
+                                                    <Plus className="h-5 w-5 text-neon-purple" />
+                                                    Nuevo Video
+                                                </CardTitle>
+                                            </div>
+                                            <CardDescription>
+                                                Ingresa los datos básicos y técnicos.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-6">
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="title">Título</Label>
+                                                    <Input
+                                                        id="title"
+                                                        {...manualImportForm.register("title")}
+                                                        placeholder="Título del video"
+                                                    />
+                                                    {manualImportForm.formState.errors.title && <span className="text-xs text-red-400">{manualImportForm.formState.errors.title?.message}</span>}
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="description">Descripción</Label>
+                                                    <Textarea
+                                                        id="description"
+                                                        {...manualImportForm.register("description")}
+                                                        placeholder="Descripción técnica o interna..."
+                                                        className="min-h-[80px]"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* MUX SECTION */}
+                                            <div className="pt-4 border-t border-border mt-4">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h3 className="text-sm font-medium text-neon-purple flex items-center gap-2">
+                                                        Credenciales Mux (Requerido)
+                                                    </h3>
+                                                </div>
+
+                                                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4 flex gap-2">
+                                                    <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+                                                    <p className="text-xs text-yellow-200/80">
+                                                        Debes ingresar al menos uno de los siguientes IDs para registrar el video.
+                                                    </p>
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs flex justify-between">
+                                                            <span>Mux Asset ID</span>
+                                                            <span className="text-[10px] text-neon-blue uppercase">Para Descargas</span>
+                                                        </Label>
+                                                        <Input
+                                                            {...manualImportForm.register("mux_asset_id")}
+                                                            placeholder="Ej: 00ec4d..."
+                                                            className="border-neon-purple/30 focus-visible:ring-neon-purple"
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs flex justify-between">
+                                                            <span>Mux Playback ID</span>
+                                                            <span className="text-[10px] text-green-400 uppercase">Para Reproducción Online</span>
+                                                        </Label>
+                                                        <Input
+                                                            {...manualImportForm.register("mux_playback_id")}
+                                                            placeholder="Ej: 3f8a2..."
+                                                            className="border-neon-purple/30 focus-visible:ring-neon-purple"
+                                                        />
+                                                    </div>
+                                                    {manualImportForm.formState.errors.mux_asset_id && <span className="text-xs text-red-400 block mt-1">{manualImportForm.formState.errors.mux_asset_id?.message}</span>}
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-4">
+                                                <button
+                                                    type="submit"
+                                                    disabled={loading}
+                                                    className="w-full bg-neon-purple hover:bg-neon-purple/90 text-white font-medium py-3 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-neon-purple/20"
+                                                >
+                                                    {loading ? (
+                                                        <>
+                                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                                            <span>Guardando...</span>
+                                                        </>
+                                                    ) : success ? (
+                                                        <>
+                                                            <Check className="h-5 w-5" />
+                                                            <span>¡Guardado!</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Save className="h-5 w-5" />
+                                                            <span>Registrar Video</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </form>
+                            </div>
+                        </div>
+
+                        {/* List Section */}
+                        <div className="xl:col-span-2">
+                            <div>
+                                <h2 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
+                                    <Settings className="h-5 w-5 text-neon-blue" />
+                                    Videos Existentes
+                                </h2>
+                                {/* Reusing AdminList component but passing current videos from props */}
+                                {/* Note: AdminList expects a specific Video interface, we might need to map or ensure compatibility */}
+                                {/* The AdminList interface is compatible enough or we pass 'videos' which are Any[] in AdminClient but typed here */}
+                                <AdminList videos={videos as any[]} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
         </div >
     );
 }
