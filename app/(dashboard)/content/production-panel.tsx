@@ -20,6 +20,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { VideoPlayerModal } from "@/components/video-player-modal";
+import { MuxUploadCard } from "@/components/mux-upload-card";
 import type { ProductionLessonRow } from "@/app/api/production-lessons/route";
 
 type HierarchyModule = { id: string; title: string; lessons: ProductionLessonRow[] };
@@ -589,6 +590,12 @@ export function ProductionPanel() {
                                                                                             onProcess={handleProcessVideo}
                                                                                         />
                                                                                     ))}
+                                                                                    {/* Upload Card for this module */}
+                                                                                    <MuxUploadCard
+                                                                                        communityId={comm.id}
+                                                                                        courseId={course.id}
+                                                                                        moduleId={mod.id}
+                                                                                    />
                                                                                 </div>
                                                                             )}
                                                                         </div>

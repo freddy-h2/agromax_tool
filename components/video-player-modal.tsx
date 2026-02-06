@@ -24,7 +24,7 @@ export function VideoPlayerModal({
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [needsSigned, setNeedsSigned] = useState(false);
+
 
     const fetchToken = useCallback(async (pbId: string) => {
         setLoading(true);
@@ -40,7 +40,7 @@ export function VideoPlayerModal({
                 throw new Error(data.error || "Error al obtener token");
             }
             setToken(data.token);
-            setNeedsSigned(true);
+
         } catch (err) {
             setError(err instanceof Error ? err.message : "Error desconocido");
         } finally {
@@ -48,19 +48,17 @@ export function VideoPlayerModal({
         }
     }, []);
 
-    // Reset state when modal opens/closes or playbackId changes
+    // Fetch token immediately when modal opens (production videos require signed URLs)
     useEffect(() => {
         if (isOpen && playbackId) {
-            // Primero intentamos sin signed, si falla pedimos token
-            setToken(null);
-            setNeedsSigned(false);
+            // Immediately fetch token for signed playback
             setError(null);
+            fetchToken(playbackId);
         } else {
             setToken(null);
-            setNeedsSigned(false);
             setError(null);
         }
-    }, [isOpen, playbackId]);
+    }, [isOpen, playbackId, fetchToken]);
 
     // Close on escape
     useEffect(() => {
@@ -77,13 +75,13 @@ export function VideoPlayerModal({
         };
     }, [isOpen, onClose]);
 
-    // Handle MuxPlayer error (may need signed token)
+    // Handle MuxPlayer error (retry fetching token)
     const handlePlayerError = useCallback(() => {
-        if (playbackId && !needsSigned && !token) {
-            // Retry with signed token
+        if (playbackId && !token) {
+            // Retry fetching token
             fetchToken(playbackId);
         }
-    }, [playbackId, needsSigned, token, fetchToken]);
+    }, [playbackId, token, fetchToken]);
 
     if (!playbackId) return null;
 
@@ -156,16 +154,10 @@ export function VideoPlayerModal({
                                 </div>
                             )}
 
-                            {!loading && !error && (
+                            {!loading && !error && token && (
                                 <MuxPlayer
                                     playbackId={playbackId}
-                                    tokens={
-                                        needsSigned && token
-                                            ? {
-                                                  playback: token,
-                                              }
-                                            : undefined
-                                    }
+                                    tokens={{ playback: token }}
                                     streamType="on-demand"
                                     autoPlay
                                     accentColor="#22dd60"
@@ -182,7 +174,7 @@ export function VideoPlayerModal({
                                 <code className="bg-white/5 px-1.5 py-0.5 rounded">
                                     {playbackId}
                                 </code>
-                                {needsSigned && (
+                                {token && (
                                     <span className="ml-2 text-amber-500">(signed)</span>
                                 )}
                             </p>

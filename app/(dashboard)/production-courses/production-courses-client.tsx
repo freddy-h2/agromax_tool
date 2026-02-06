@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { VideoPlayerModal } from "@/components/video-player-modal";
+import { MuxUploadCard } from "@/components/mux-upload-card";
 import type { ProductionLessonRow } from "@/app/api/production-lessons/route";
 
 type CommunityOption = { id: string; name: string };
@@ -155,9 +156,8 @@ function VideoCard({
                 )}
                 <div className="flex items-center justify-between gap-2">
                     <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                            isReady ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
-                        }`}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isReady ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
+                            }`}
                     >
                         {isReady ? <CheckCircle2 className="h-3 w-3" /> : <Layers className="h-3 w-3" />}
                         {status}
@@ -398,7 +398,7 @@ export function ProductionCoursesClient() {
                     )}
 
                     {!loading && !error && (
-                        <Tabs value={tab} onValueChange={() => {}}>
+                        <Tabs value={tab} onValueChange={() => { }}>
                             {/* Galería: selectores + grid de tarjetas */}
                             <TabsContent value="lista" className="mt-0">
                                 <CardDescription className="mb-3">
@@ -596,6 +596,12 @@ export function ProductionCoursesClient() {
                                                                                                             onPlay={handlePlayVideo}
                                                                                                         />
                                                                                                     ))}
+                                                                                                    {/* Card de subida para este módulo */}
+                                                                                                    <MuxUploadCard
+                                                                                                        communityId={comm.id}
+                                                                                                        courseId={course.id}
+                                                                                                        moduleId={mod.id}
+                                                                                                    />
                                                                                                 </div>
                                                                                             </div>
                                                                                         )}

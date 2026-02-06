@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, Layers, MonitorPlay, AlertCircle, LayoutGrid, List, Grid3X3, Play } from "lucide-react";
+import { BookOpen, Layers, MonitorPlay, AlertCircle, LayoutGrid, List, Grid3X3, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Community } from "@/lib/data/cursos-hierarchy";
 import MuxPlayer from "@mux/mux-player-react";
+
+import { VideoUploadCard } from "@/components/video-upload-card";
+import { MuxUploadCard } from "@/components/mux-upload-card";
 
 interface CursosTabsProps {
     data: Community[];
@@ -17,15 +20,6 @@ type ViewMode = 'grid' | 'list' | 'compact';
 
 export default function CursosTabs({ data: communities, orphanAssets }: CursosTabsProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
-
-    // If both are empty, show message
-    if (communities.length === 0 && orphanAssets.length === 0) {
-        return (
-            <div className="p-12 text-center border border-[#333] rounded-xl bg-[#0a0a0a]">
-                <p className="text-[#888]">No se encontraron comunidades ni videos disponibles.</p>
-            </div>
-        );
-    }
 
     return (
         <div className="max-w-6xl animate-fade-in pb-20">
@@ -54,6 +48,13 @@ export default function CursosTabs({ data: communities, orphanAssets }: CursosTa
                         className="data-[state=active]:bg-neon-blue data-[state=active]:text-black text-[#888] px-6"
                     >
                         Por subir ({orphanAssets.length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="nuevo"
+                        className="data-[state=active]:bg-neon-blue data-[state=active]:text-black text-[#888] px-6 flex items-center gap-2"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Subir Video
                     </TabsTrigger>
                 </TabsList>
 
@@ -171,9 +172,12 @@ export default function CursosTabs({ data: communities, orphanAssets }: CursosTa
                                                                                     </CardContent>
                                                                                 </Card>
                                                                             ))}
-                                                                            {module.lessons.length === 0 && (
-                                                                                <p className="text-[#666] italic col-span-full">No hay lecciones en este módulo.</p>
-                                                                            )}
+                                                                            {/* Card de subida de video para este módulo */}
+                                                                            <MuxUploadCard
+                                                                                communityId={community.id}
+                                                                                courseId={course.id}
+                                                                                moduleId={module.id}
+                                                                            />
                                                                         </div>
                                                                     </TabsContent>
                                                                 ))}
@@ -274,6 +278,13 @@ export default function CursosTabs({ data: communities, orphanAssets }: CursosTa
                         </div>
                     )}
                 </TabsContent>
+
+                {/* Tab: Subir Video */}
+                <TabsContent value="nuevo" className="mt-6 animate-in fade-in-50">
+                    <div className="max-w-3xl mx-auto h-[600px]">
+                        <VideoUploadCard />
+                    </div>
+                </TabsContent>
             </Tabs>
         </div>
     );
@@ -292,8 +303,6 @@ function OrphanAssetCard({ asset, mode }: { asset: any, mode: ViewMode }) {
                             metadata={{ video_title: asset.id }}
                             className="w-full h-full"
                             accentColor="#22c55e"
-                            width="100%"
-                            height="100%"
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full text-[#444] bg-[#111]">
